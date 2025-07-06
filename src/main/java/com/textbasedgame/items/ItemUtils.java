@@ -8,6 +8,8 @@ import org.springframework.data.util.Pair;
 import java.util.*;
 
 public class ItemUtils {
+    public record GenerateItemNameDesc(String name, String description) {}
+    private static final UniqueNamesConfig uniqueNamesConfig = new UniqueNamesConfig();
     private ItemUtils() {}
 
 
@@ -46,8 +48,23 @@ public class ItemUtils {
         return RandomUtils.getRandomItemFromArray( ItemSuffixesEnum.values());
     }
 
-    public static String getItemName(ItemTypeEnum type){
-        return type.getDisplayName();
+    private static String genNameFromSuffixPrefix(ItemPrefixesEnum prefix, ItemSuffixesEnum suffix, ItemsSubtypes subtype) {
+        return prefix.getRandomName() + suffix.getRandomName()  + " " + subtype.name().toLowerCase();
+    }
+
+    public static GenerateItemNameDesc generateItemNameDesc(Optional<String> overrideName, ItemRarityEnum rarity, ItemPrefixesEnum prefix, ItemSuffixesEnum suffix, ItemsSubtypes subtype){
+      String name =overrideName.orElse("");
+        return switch(rarity) {
+          case EPIC -> new GenerateItemNameDesc(!name.isEmpty() ? name : prefix.getRandomName() + " " + subtype.name().toLowerCase(), "");
+          case LEGENDARY -> new GenerateItemNameDesc(!name.isEmpty() ? name : genNameFromSuffixPrefix(prefix, suffix, subtype), "Legendary " + subtype.name().toLowerCase());
+          case MYTHIC -> {
+              UniqueNamesConfig.NamesByCategory names = uniqueNamesConfig.pickUniqueName(subtype);
+              String currentName = !name.isEmpty() ? name : names.name().isEmpty() ? genNameFromSuffixPrefix(prefix, suffix, subtype) : names.name();
+              String currentDesc = names.description().isEmpty() ? "Mythic " + subtype.name().toLowerCase() : names.description();
+              yield new GenerateItemNameDesc(currentName, currentDesc);
+          }
+          default -> new GenerateItemNameDesc(!name.isEmpty() ? name : subtype.name().toLowerCase(), "");
+      };
     }
 
 
@@ -77,14 +94,14 @@ public class ItemUtils {
     }
 
     public static Item generateItemWithoutBaseStats(
-            User user, String itemName, ItemTypeEnum type, ItemsSubtypes subtype, int level, ItemRarityEnum rarity, ItemPrefixesEnum prefix, ItemSuffixesEnum suffix
+            User user, String itemName, String description, ItemTypeEnum type, ItemsSubtypes subtype, int level, ItemRarityEnum rarity, ItemPrefixesEnum prefix, ItemSuffixesEnum suffix
     ) {
-        return generateItem(user, itemName, type, subtype, level, rarity, prefix,suffix, new HashMap<>(), new HashMap<>());
+        return generateItem(user, itemName, description, type, subtype, level, rarity, prefix,suffix, new HashMap<>(), new HashMap<>());
     }
 
     private static Item generateItem(
             User user,
-            String itemName, ItemTypeEnum type, ItemsSubtypes subtype, int level,  ItemRarityEnum rarity,
+            String itemName, String description, ItemTypeEnum type, ItemsSubtypes subtype, int level,  ItemRarityEnum rarity,
             ItemPrefixesEnum prefix, ItemSuffixesEnum suffix,
             Map<String, ItemStatisticsObject> baseStatistics,
             Map<String, ItemStatisticsObject> baseAdditionalStatistics
@@ -95,37 +112,43 @@ public class ItemUtils {
         int itemValue = getItemValueBasedOnRarityLevel(level, rarity);
         switch (type){
             case CONSUMABLE -> {
-                return new ItemConsumable(itemName, user, "Description of "+itemName,
+                return new ItemConsumable(itemName, user, description,
                         level, itemValue,
                         rarity, itemWeight, subtype);
             }
             case MERCENARY -> {
-                return new ItemMercenary(itemName, user, "Description of "+itemName,
+                return new ItemMercenary(itemName, user, description,
                         level, getItemValueBasedOnRarityLevel(level, rarity), rarity, itemWeight, subtype,
                         //TODO: add stats for mercenaries
                         baseStatistics, baseAdditionalStatistics);
             }
         }
-        return new ItemWearable(itemName, user, "Description of "+itemName,
+        return new ItemWearable(itemName, user, description,
                 level, getItemValueBasedOnRarityLevel(level, rarity), type,
                 subtype, rarity, itemWeight,prefix, suffix, new HashMap<>(), new HashMap<>());
 
     }
 
-    public static Item generateRandomItemWithoutBaseStats(User user, String name, int itemLevel, ItemTypeEnum itemType){
+    public static Item generateRandomItemWithoutBaseStats(User user, int itemLevel, ItemTypeEnum itemType, Optional<String> overrideName){
         ItemsSubtypes subtype = RandomUtils.getRandomItemFromArray(itemType.getSubtypes());
-        return  generateItemWithoutBaseStats(user, name, itemType, subtype, itemLevel,
-                getRandomRarityItem(), getRandomItemPrefix(), getRandomItemSuffix()
+        ItemRarityEnum rarity = getRandomRarityItem();
+        ItemPrefixesEnum randomPrefix = getRandomItemPrefix();
+        ItemSuffixesEnum randomSuffix = getRandomItemSuffix();
+        GenerateItemNameDesc nameDescData = generateItemNameDesc(overrideName, rarity, randomPrefix, randomSuffix, subtype);
+        return  generateItemWithoutBaseStats(user, nameDescData.name, nameDescData.description, itemType, subtype, itemLevel,
+                rarity, randomPrefix, randomSuffix
         );
     };
 
+
+
     //NOTE: That's for debug right now;
-    public static Item generateRandomItem(User user, String name, int itemLevel, ItemTypeEnum itemType,
+    public static Item generateRandomItem(User user, String name, String description, int itemLevel, ItemTypeEnum itemType,
                                           Map<String, ItemStatisticsObject> baseStatistics,
                                           Map<String, ItemStatisticsObject> baseAdditionalStatistics
     ){
         ItemsSubtypes subtype = RandomUtils.getRandomItemFromArray(itemType.getSubtypes());
-        return generateItem(user, name, itemType, subtype, itemLevel,
+        return generateItem(user, name, description, itemType, subtype, itemLevel,
                 getRandomRarityItem(),getRandomItemPrefix(),
                 getRandomItemSuffix(), baseStatistics, baseAdditionalStatistics
         );
@@ -134,8 +157,7 @@ public class ItemUtils {
 
     public static Item generateRandomItem(User user){
         ItemTypeEnum randomItemType = getRandomItemType();
-        String randomItemName = getItemName(randomItemType);
-        return generateRandomItemWithoutBaseStats(user, randomItemName, RandomUtils.getRandomValueWithinRange(1,100), randomItemType);
+        return generateRandomItemWithoutBaseStats(user, RandomUtils.getRandomValueWithinRange(1,100), randomItemType, Optional.empty());
     }
     public static List<Item> generateRandomItems(User user, int count) {
         List<Item> generatedItems = new ArrayList<>();

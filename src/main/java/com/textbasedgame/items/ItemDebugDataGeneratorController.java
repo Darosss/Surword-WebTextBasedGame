@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Optional;
 
 //CONTROLLER FOR DEBUGGING
 //EASILY ADD RANDOM ITEMS
@@ -57,7 +58,7 @@ public class ItemDebugDataGeneratorController implements SecuredRestController {
         User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
         Inventory inventory = this.inventoryService.getUserInventory(loggedUser.getId());
         Item item = service.create(ItemUtils.generateRandomItemWithoutBaseStats(
-                loggedUser, "Item custom level", level, type));
+                loggedUser, level, type, Optional.empty()));
         inventory.addItem(item);
         this.inventoryService.update(inventory);
 

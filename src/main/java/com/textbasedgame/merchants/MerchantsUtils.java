@@ -8,6 +8,7 @@ import com.textbasedgame.utils.RandomUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class MerchantsUtils {
     private MerchantsUtils() {};
@@ -22,7 +23,7 @@ public class MerchantsUtils {
                         Math.max(1, characterLevel - 5), characterLevel + 12
                 );
                 generatedItems.add(ItemUtils.generateRandomItemWithoutBaseStats(
-                        user,itemType + " from merchant | itemLevel: "+itemLevel, itemLevel, itemType)
+                        user, itemLevel, itemType, Optional.empty())
                 );
 
             }

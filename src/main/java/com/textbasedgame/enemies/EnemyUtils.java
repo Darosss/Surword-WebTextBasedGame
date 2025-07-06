@@ -15,6 +15,7 @@ import org.springframework.data.util.Pair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class EnemyUtils {
     private static final Logger logger = LoggerFactory.getLogger(EnemyUtils.class);
@@ -159,9 +160,8 @@ public class EnemyUtils {
             for (int i = 0; i< numberOfItems; i++){
                 int itemLevel = RandomUtils.getRandomValueWithinRange(Math.max(1, enemyLevel - 5), enemyLevel + 8);
                 ItemTypeEnum itemType = ItemUtils.getRandomItemType();
-                //TODO: make random name generator for items
                 items.add(ItemUtils.generateRandomItemWithoutBaseStats(
-                        forUser, itemType + " from enemy: "+type+" | level: "+enemyLevel, itemLevel, itemType)
+                        forUser, itemLevel, itemType, Optional.empty())
                 );
             }
 
