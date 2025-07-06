@@ -28,6 +28,7 @@ dependencies {
 	implementation 'org.slf4j:slf4j-api:2.0.12'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'ch.qos.logback:logback-classic:1.5.0'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 }
 
 tasks.named('test') {
