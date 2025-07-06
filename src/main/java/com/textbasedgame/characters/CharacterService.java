@@ -5,6 +5,7 @@ import com.textbasedgame.users.User;
 import com.textbasedgame.utils.TransactionsUtils;
 import dev.morphia.Datastore;
 import dev.morphia.DeleteOptions;
+import dev.morphia.UpdateOptions;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.query.updates.UpdateOperator;
 import dev.morphia.query.updates.UpdateOperators;
@@ -46,8 +47,7 @@ public class CharacterService {
 
         datastore.find(MainCharacter.class)
                 .filter(Filters.eq("id", new ObjectId(id)))
-                .update(List.of(updates))
-                .execute();
+                .update(new UpdateOptions(),updates);
 
         return true;
     }
