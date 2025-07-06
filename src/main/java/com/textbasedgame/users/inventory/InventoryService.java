@@ -3,10 +3,13 @@ package com.textbasedgame.users.inventory;
 import com.textbasedgame.items.Item;
 import dev.morphia.Datastore;
 import dev.morphia.query.filters.Filters;
+import dev.morphia.query.updates.UpdateOperator;
 import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
 import java.util.Map;
 
 @Service
@@ -26,11 +29,15 @@ public class InventoryService {
         return this.datastore.save(inventory);
     }
 
-    public void addItemsToInventory(ObjectId inventoryId, Map<String, Item> newItems) {
+    public void addItemsToInventory(ObjectId inventoryId, Map<String, Item> newItems, Float newWeight) {
         datastore.find(Inventory.class)
                 .filter(Filters.eq("_id", inventoryId))
-                .update(UpdateOperators.set("items", newItems))
+                .update(Arrays.stream(new UpdateOperator[]{
+                        UpdateOperators.set("items", newItems),
+                        UpdateOperators.set("currentWeight", newWeight),
+                }).toList())
                 .execute();
+
     }
 
     public Inventory getUserInventory(ObjectId userId) {

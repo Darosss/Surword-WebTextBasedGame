@@ -31,7 +31,7 @@ public class ItemsInventoryService {
             item.setUser(user);
             userInventory.addItem(item);
         }
-        this.inventoryService.addItemsToInventory(userInventory.getId(), userInventory.getItems() == null ? new HashMap<>() :userInventory.getItems());
+        this.inventoryService.addItemsToInventory(userInventory.getId(), userInventory.getItems() == null ? new HashMap<>() :userInventory.getItems(), userInventory.getCurrentWeight());
         return CompletableFuture.completedFuture(true);
     }
 }
