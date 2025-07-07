@@ -9,8 +9,9 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import dev.morphia.annotations.Reference;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
-
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -69,6 +70,17 @@ public class Character  extends BaseHero {
         //For set equipment here and character in equipment
         this.equipment = equipment;
         this.user = user;
+    }
+
+    public static UpdateOperator[] getMorphiaSetCharacterStats(HeroStatisticsObject stats) {
+        return new UpdateOperator[] {
+                UpdateOperators.set("stats", stats),
+        };
+    }
+    public static UpdateOperator[] getMorphiaSetCharacterHealth(Integer newHealth) {
+        return new UpdateOperator[] {
+                UpdateOperators.set("health", newHealth),
+        };
     }
 
     public void calculateStatisticByItem(Item item, boolean isEquip){
