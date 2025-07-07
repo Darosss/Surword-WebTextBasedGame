@@ -5,14 +5,12 @@ import com.textbasedgame.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import dev.morphia.annotations.Entity;
-import dev.morphia.annotations.Id;
-import dev.morphia.annotations.Reference;
+import dev.morphia.annotations.*;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Entity("users_inventories")
 public class Inventory {
@@ -37,6 +35,31 @@ public class Inventory {
         this.maxItems = 1000;
         this.maxWeight = maxWeight;
         this.currentWeight = 0;
+    }
+
+    public static UpdateOperator[] getMorphiaUpdateAddItems(List<Item> items, float newWeight) {
+        if (items == null || items.isEmpty()) return new UpdateOperator[0];
+        return new UpdateOperator[] {
+                UpdateOperators.addToSet("items", items),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+    public static UpdateOperator[] getMorphiaUpdateAddItems(Item item, float newWeight) {
+        return new UpdateOperator[] {
+                UpdateOperators.addToSet("items", item),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+
+    public static UpdateOperator[] getMorphiaUpdateRemoveItems(List<ObjectId> itemsIds, float newWeight) {
+        if (itemsIds == null || itemsIds.isEmpty()) return new UpdateOperator[0];
+        return new UpdateOperator[] {
+                UpdateOperators.pullAll("items", itemsIds),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+    private static UpdateOperator getMorphiaUpdateCurrentWeight(Float value) {
+        return UpdateOperators.set("currentWeight", value);
     }
 
     public Map<String, Item> getItems() {
