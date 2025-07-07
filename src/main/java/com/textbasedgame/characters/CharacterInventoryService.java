@@ -2,7 +2,6 @@ package com.textbasedgame.characters;
 
 import com.textbasedgame.characters.equipment.CharacterEquipment;
 import com.textbasedgame.characters.equipment.CharacterEquipmentFieldsEnum;
-import com.textbasedgame.characters.equipment.Equipment;
 import com.textbasedgame.characters.equipment.Equipment.UnEquipItemResult;
 import com.textbasedgame.characters.equipment.Equipment.EquipItemResult;
 import com.textbasedgame.characters.equipment.Equipment.UseConsumableItemResult;
@@ -11,12 +10,16 @@ import com.textbasedgame.items.*;
 import com.textbasedgame.users.inventory.Inventory;
 import com.textbasedgame.utils.TransactionsUtils;
 import dev.morphia.Datastore;
+import dev.morphia.UpdateOptions;
+import dev.morphia.query.filters.Filters;
 import dev.morphia.transactions.MorphiaSession;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -141,11 +144,24 @@ public class CharacterInventoryService {
         int hpGain = item.getHpGain();
         if(hpGain > 0) character.increaseHealth(item.getHpGain());
         else character.decreaseHealth(item.getHpGain());
-        inventory.removeItemById(item.getId());
+        Optional<Item> usedItem = inventory.removeItemById(item.getId());
+
+        if (usedItem.isEmpty()) return new UseConsumableItemResult(false, "Item does not exist.", Optional.empty());
+
         try {
-            session.save(character);
-            session.save(character.getEquipment());
-            session.save(inventory);
+            session.find(Character.class)
+                    .filter(Filters.eq("_id", character.getId()))
+                    .update(
+                            new UpdateOptions(),
+                            Character.getMorphiaSetCharacterHealth(character.getHealth())
+                    );
+            session.find(Inventory.class)
+                    .filter(Filters.eq("_id", inventory.getId()))
+                    .update(
+                            new UpdateOptions(),
+                            Inventory.getMorphiaUpdateRemoveItems(List.of(usedItem.get().getId()), inventory.getCurrentWeight())
+                    );
+
             return new UseConsumableItemResult(true, "Successfully used item", Optional.of(character.getHealth()));
         }catch(Exception e){
             return new UseConsumableItemResult(false, "Couldn't use item", Optional.empty());
@@ -178,9 +194,18 @@ public class CharacterInventoryService {
     private EquipItemResult handleUseMercenaryItemTransaction(MorphiaSession session, ItemMercenary item, MercenaryCharacter character, Inventory inventory){
         Optional<Item> itemToEquip = inventory.removeItemById(item.getId());
         if (itemToEquip.isEmpty()) return new EquipItemResult(false, "Item does not exist.");
-        character.setMercenary(item);
-        session.save(character);
-        session.save(inventory);
+        session.find(Character.class)
+                .filter(Filters.eq("_id", character.getId()))
+                .update(
+                        new UpdateOptions(),
+                        Character.getMorphiaSetCharacterStats(character.getStats())
+                );
+        session.find(Inventory.class)
+                .filter(Filters.eq("_id", inventory.getId()))
+                .update(
+                        new UpdateOptions(),
+                        Inventory.getMorphiaUpdateRemoveItems(List.of(itemToEquip.get().getId()), inventory.getCurrentWeight())
+                );
 
         return new EquipItemResult(true, "Successfully used mercenary item");
     }
@@ -213,17 +238,46 @@ public class CharacterInventoryService {
         ItemMercenary mercenaryItem = character.getMercenary();
         inventory.addItem(mercenaryItem);
         character.setMercenary(null);
-        session.save(character);
-        session.save(inventory);
+        session.find(Character.class)
+                .filter(Filters.eq("_id", character.getId()))
+                .update(
+                        new UpdateOptions(),
+                        Character.getMorphiaSetCharacterStats(character.getStats())
+                );
+        session.find(Inventory.class)
+                .filter(Filters.eq("_id", inventory.getId()))
+                .update(
+                        new UpdateOptions(),
+                        Inventory.getMorphiaUpdateAddItems(mercenaryItem, inventory.getCurrentWeight())
+                );
 
         return new UnEquipItemResult(true, "Successfully un equipped mercenary item", Optional.of(mercenaryItem));
     }
 
     private void calculateStatisticsAndSave(MorphiaSession session, Item item, Character character, Inventory userInventory, boolean isEquip) {
         character.calculateStatisticByItem(item, isEquip);
-        //TODO: for now save - latter make find.update() ?
-        session.save(character);
-        session.save(userInventory);
-        session.save(character.getEquipment());
+        session.find(Character.class)
+                .filter(Filters.eq("_id", character.getId()))
+                .update(
+                        new UpdateOptions(),
+                        Character.getMorphiaSetCharacterStats(character.getStats())
+                );
+        session.find(Inventory.class)
+                .filter(Filters.eq("_id", userInventory.getId()))
+                .update(
+                        new UpdateOptions(),
+                        isEquip ?
+                            Inventory.getMorphiaUpdateRemoveItems(Inventory.getItemsIds(List.of(item)), userInventory.getCurrentWeight()) :
+                            Inventory.getMorphiaUpdateAddItems(item, userInventory.getCurrentWeight())
+                );
+
+        session.find(CharacterEquipment.class)
+                .filter(Filters.eq("character", character.getId()))
+                .update(
+                    new UpdateOptions(),
+                    CharacterEquipment.getMorphiaSetSlots(character.getEquipment().getSlots())
+                );
+
+
     }
 }
