@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import dev.morphia.annotations.Reference;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 
 import java.util.HashMap;
@@ -30,6 +32,11 @@ import java.util.Optional;
     private Map<CharacterEquipmentFieldsEnum, Item> slots = new HashMap<>();
     public CharacterEquipment() {}
 
+    public static UpdateOperator[] getMorphiaSetSlots(Map<CharacterEquipmentFieldsEnum, Item> newSlots) {
+        return new UpdateOperator[] {
+                UpdateOperators.set("slots", newSlots),
+        };
+    }
 
 
     public EquipItemResult equipItem(CharacterEquipmentFieldsEnum slot, Item item) {
