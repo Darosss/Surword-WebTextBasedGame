@@ -8,6 +8,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import dev.morphia.annotations.*;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -48,6 +50,14 @@ public class Merchant {
     public void rebuildItemsMap() {
         this.itemMap = this.items == null ? new HashMap<>() : this.items.stream()
                 .collect(Collectors.toMap((itemMerch)->itemMerch.getItem().getId().toString(), Function.identity()));
+    }
+
+    public static UpdateOperator getMorphiaUpdateBuyItem(List<ItemMerchant> itemsMerchant) {
+        return UpdateOperators.pullAll("items", itemsMerchant);
+    }
+
+    public static UpdateOperator getMorphiaUpdateSellItem(ItemMerchant itemMerchant) {
+        return UpdateOperators.addToSet("items", itemMerchant);
     }
 
     public ObjectId getId() {
