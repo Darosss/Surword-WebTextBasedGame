@@ -50,12 +50,7 @@ public class TransactionsUtils {
     }
 
     public static List<Item> handleCreatingNewItems(MorphiaSession session, List<Item> items){
-        List<Item> itemsDb = new ArrayList<>();
-        for (Item item : items) {
-            Item createdItem = session.save(item);
-            itemsDb.add(createdItem);
-        }
-        return itemsDb;
+        return session.save(items);
     }
 
     public static CharacterEquipment createNewEquipment(MorphiaSession session){
