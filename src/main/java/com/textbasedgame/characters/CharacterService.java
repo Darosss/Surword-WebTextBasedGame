@@ -8,7 +8,6 @@ import dev.morphia.DeleteOptions;
 import dev.morphia.UpdateOptions;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.query.updates.UpdateOperator;
-import dev.morphia.query.updates.UpdateOperators;
 import dev.morphia.transactions.MorphiaSession;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,16 +32,15 @@ public class CharacterService {
     }
 
     public boolean handlePostFightUpdate(String id, long newExp, int level, Optional<Integer> newHP) {
-
         UpdateOperator[] updates = newHP
                 .<UpdateOperator[]>map(hp -> new UpdateOperator[] {
-                        UpdateOperators.set("experience", newExp),
-                        UpdateOperators.set("level", level),
-                        UpdateOperators.set("health", hp)
+                        MainCharacter.getMorphiaSetExperience(newExp),
+                        MainCharacter.getMorphiaSetLevel(level),
+                        MainCharacter.getMorphiaSetCharacterHealth(newHP.get()),
                 })
                 .orElseGet(() -> new UpdateOperator[] {
-                        UpdateOperators.set("experience", newExp),
-                        UpdateOperators.set("level", level),
+                        MainCharacter.getMorphiaSetExperience(newExp),
+                        MainCharacter.getMorphiaSetLevel(level),
                 });
 
         datastore.find(MainCharacter.class)
