@@ -72,15 +72,16 @@ public class Character  extends BaseHero {
         this.user = user;
     }
 
-    public static UpdateOperator[] getMorphiaSetCharacterStats(HeroStatisticsObject stats) {
-        return new UpdateOperator[] {
-                UpdateOperators.set("stats", stats),
-        };
+    public static UpdateOperator getMorphiaSetCharacterStats(HeroStatisticsObject stats) {
+        return UpdateOperators.set("stats", stats);
     }
-    public static UpdateOperator[] getMorphiaSetCharacterHealth(Integer newHealth) {
-        return new UpdateOperator[] {
-                UpdateOperators.set("health", newHealth),
-        };
+
+    public static UpdateOperator getMorphiaSetCharacterHealth(int newHealth) {
+        return UpdateOperators.set("health", newHealth);
+    }
+
+    public static UpdateOperator getMorphiaSetLevel(Integer value) {
+        return UpdateOperators.set("level", value);
     }
 
     public void calculateStatisticByItem(Item item, boolean isEquip){
