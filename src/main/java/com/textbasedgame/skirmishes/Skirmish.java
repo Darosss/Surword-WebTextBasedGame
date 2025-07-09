@@ -5,15 +5,16 @@ import com.textbasedgame.utils.RandomUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import dev.morphia.annotations.Entity;
-import dev.morphia.annotations.Id;
-import dev.morphia.annotations.Reference;
+import dev.morphia.annotations.*;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
-
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Entity("skirmishes")
 public class Skirmish {
@@ -23,7 +24,11 @@ public class Skirmish {
     @JsonIgnore
     @Reference(idOnly = true, lazy=true)
     private User user;
-    private final Map<String, SkirmishData> challenges = new HashMap<>();
+
+    private List<SkirmishData> challenges = new ArrayList<>();
+
+    @Transient
+    private Map<String, SkirmishData> challengesMap = new HashMap<>();
 
     private final Dungeons dungeons = new Dungeons();
     private ChosenChallenge chosenChallenge;
@@ -45,12 +50,31 @@ public class Skirmish {
 
         int id = 0;
         for(EnemySkirmishDifficulty difficulty : EnemySkirmishDifficulty.values()) {
-            this.challenges.put(String.valueOf(id), new SkirmishData(difficulty, "Debug skirmish"));
+            this.challengesMap.put(String.valueOf(id), new SkirmishData(difficulty, "Debug skirmish"));
             id++;
         }
+        this.syncChallengesToList();
     }
-    public void generateChallenges(int iterateCount) {
+
+    public void syncChallengesToList() {
+        this.challenges = new ArrayList<>(this.challengesMap.values());
+    }
+
+    @PostLoad
+    public void rebuildChallengesMap() {
+        this.challengesMap = this.challenges == null
+                ? new HashMap<>()
+                : IntStream.range(0, this.challenges.size())
+                .boxed()
+                .collect(Collectors.toMap(
+                        String::valueOf,
+                        i -> challenges.get(i)
+                ));
+    }
+
+    public Map<String, SkirmishData> generateChallenges(int iterateCount) {
         this.challenges.clear();
+        this.challengesMap.clear();
         this.setChosenChallenge(null);
 
             int id = 0;
@@ -59,15 +83,17 @@ public class Skirmish {
                     double probability = difficulty.getProbability();
                     boolean canAdd = RandomUtils.checkPercentageChance(probability);
                     if(canAdd) {
-                        this.challenges.put(String.valueOf(id), new SkirmishData(difficulty, "Skirmish: " + difficulty.name() + " " + i));
+                        this.challengesMap.put(String.valueOf(id), new SkirmishData(difficulty, "Skirmish: " + difficulty.name() + " " + i));
                         id++;
                     }
             }
         }
+        this.syncChallengesToList();
+        return this.challengesMap;
     }
 
     public Map<String, SkirmishData> getChallenges() {
-        return challenges;
+        return this.challengesMap;
     }
     public ObjectId getId() { return id; }
     public User getUser() { return user; }
@@ -97,7 +123,7 @@ public class Skirmish {
     }
 
     public SkirmishData getChallengeById(String id){
-        return this.challenges.get(id);
+        return this.challengesMap.get(id);
     }
 
 
