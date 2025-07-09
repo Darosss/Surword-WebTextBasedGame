@@ -56,6 +56,39 @@ public class Skirmish {
         this.syncChallengesToList();
     }
 
+    public static UpdateOperator[] getMorphiaUpdateChallenges(List<SkirmishData> newChallenges) {
+        if (newChallenges == null || newChallenges.isEmpty()) return new UpdateOperator[0];
+        return new UpdateOperator[] {
+                UpdateOperators.set("challenges", newChallenges),
+                getMorphiaUnsetChosenChallenge()
+        };
+    }
+
+    public static UpdateOperator getMorphiaSetChosenChallenge(ChosenChallenge value) {
+        return UpdateOperators.set("chosenChallenge", value);
+    }
+    public static UpdateOperator getMorphiaUnsetChosenChallenge() {
+        return UpdateOperators.unset("chosenChallenge");
+    }
+
+    public static UpdateOperator[] getMorphiaUpdateOnSuccessDungeon(int currentLevel, LocalDateTime canFightDate, Dungeons.DungeonData completedDungeon) {
+        return new UpdateOperator[] {
+                UpdateOperators.set("dungeons.currentLevel", currentLevel),
+                getMorphiaUpdateCanFightDate(canFightDate),
+                UpdateOperators.addToSet("dungeons.completedDungeons", completedDungeon)
+        };
+    }
+
+    public static UpdateOperator[] getMorphiaUpdateOnFailedDungeon(LocalDateTime canFightDate) {
+        return new UpdateOperator[] {
+                getMorphiaUpdateCanFightDate(canFightDate),
+        };
+    }
+
+    public static UpdateOperator getMorphiaUpdateCanFightDate(LocalDateTime value) {
+        return UpdateOperators.set("dungeons.canFightDate", value);
+    }
+
     public void syncChallengesToList() {
         this.challenges = new ArrayList<>(this.challengesMap.values());
     }
