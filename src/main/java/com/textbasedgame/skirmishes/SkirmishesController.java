@@ -66,10 +66,9 @@ public class SkirmishesController implements SecuredRestController {
         if(returnData.data().isEmpty()) throw new BadRequestException(returnData.message());
 
         ChallengesService.CommonReturnData data = returnData.data().get();
-        data.skirmish().generateChallenges(2);
-        this.service.update(data.skirmish());
         //TODO: iterateCount - should be get from user collection(for example some users can have more than 2)
-
+        data.skirmish().generateChallenges(2);
+        this.service.updateNewChallenges(data.skirmish().getId(), data.skirmish().getChallenges());
 
         this.onSuccessFight(loggedUser, data.report().getLoot(), data.report().getGainedGold());
 
@@ -91,15 +90,15 @@ public class SkirmishesController implements SecuredRestController {
         LocalDateTime challengeFinishTimestamp = LocalDateTime.now().plusSeconds(Settings.CHALLENGE_WAIT_COOLDOWN_MINUTES);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
-        Skirmish.ChosenChallenge skirmishData = new Skirmish.ChosenChallenge(challengeId, challengeFinishTimestamp);
+        Skirmish.ChosenChallenge chosenChallenge = new Skirmish.ChosenChallenge(challengeId, challengeFinishTimestamp);
 
         if(foundSkirmish.getChosenChallenge() != null)
             throw new BadRequestException("Wait for a current challenge to finish");
 
 
 
-        foundSkirmish.setChosenChallenge(skirmishData);
-        this.service.update(foundSkirmish);
+        foundSkirmish.setChosenChallenge(chosenChallenge);
+        this.service.updateSetChosenChallenge(foundSkirmish.getId(), chosenChallenge);
 
         return new CustomResponse<>(HttpStatus.OK, "Challenge successfully started", true);
     }
@@ -114,7 +113,7 @@ public class SkirmishesController implements SecuredRestController {
             throw new BadRequestException("There is no started challenge at all");
 
         foundSkirmish.setChosenChallenge(null);
-        this.service.update(foundSkirmish);
+        this.service.updateUnsetChosenChallenge(foundSkirmish.getId());
 
         return new CustomResponse<>(HttpStatus.OK, "Successfully canceled challenge", true);
     }
@@ -140,7 +139,26 @@ public class SkirmishesController implements SecuredRestController {
         if(returnData.data().isEmpty()) throw new BadRequestException(returnData.message());
 
         ChallengesService.CommonReturnData data = returnData.data().get();
-        this.service.update(data.skirmish());
+        Skirmish skirmish = data.skirmish();
+        Dungeons dungeon = skirmish.getDungeons();
+        if(data.report().getStatus().equals(FightReport.FightStatus.PLAYER_WIN)
+                && returnData.dungeonData().isPresent()
+        ) {
+            this.service.updateOnDungeonSuccessFight(
+                    skirmish.getId(),
+                    new SkirmishesService.UpdateOnDungeonSuccessFight(
+                            dungeon.getCurrentLevel(),
+                            dungeon.getCanFightDate(),
+                            returnData.dungeonData().get())
+            );
+        }else {
+            this.service.updateOnDungeonFailedFight(
+                    skirmish.getId(),
+                    new SkirmishesService.UpdateOnDungeonFailedFight(
+                            dungeon.getCanFightDate()
+                    )
+            );
+        }
         this.onSuccessFight(loggedUser, data.report().getLoot(), data.report().getGainedGold());
         return new CustomResponse<>(HttpStatus.OK, returnData.message(), returnData.data().get().report());
     }
