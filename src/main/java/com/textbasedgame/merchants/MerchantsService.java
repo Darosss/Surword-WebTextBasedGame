@@ -5,6 +5,7 @@ import com.textbasedgame.users.User;
 import com.textbasedgame.users.inventory.Inventory;
 import com.textbasedgame.utils.TransactionsUtils;
 import dev.morphia.Datastore;
+import dev.morphia.UpdateOptions;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.transactions.MorphiaSession;
 import org.bson.types.ObjectId;
@@ -24,7 +25,7 @@ public class MerchantsService {
         this.datastore = datastore;
     }
 
-    public record MerchantActionReturn(boolean success, Optional<Item> item, String message){}
+    public record MerchantActionReturn(boolean success, Optional<Merchant.MerchantTransaction> transaction, String message){}
 
     public Optional<Merchant> findMerchantByUserId(ObjectId userId){
         return Optional.ofNullable(datastore.find(Merchant.class).filter(
@@ -69,13 +70,11 @@ public class MerchantsService {
 
             userInventory.addItem(boughItemData.item().get());
             user.decreaseGold(boughItemData.cost());
-            session.save(user);
-            session.save(userInventory);
-            session.save(userMerchant);
+            handleMerchantActionsUpdatesTransaction(session, user.getId(), userInventory, boughItemData, false);
 
             session.commitTransaction();
 
-            return new MerchantActionReturn(true, boughItemData.item(), "Successfully bought item");
+            return new MerchantActionReturn(true, Optional.of(boughItemData), "Successfully bought item");
         }catch(Exception e){
             throw new Exception(e.getMessage());
         }
@@ -100,16 +99,13 @@ public class MerchantsService {
 
 
             Merchant.MerchantTransaction sellItemData = userMerchant.sellItem(item.get());
-
             userInventory.removeItemById(itemId);
             user.increaseGold(sellItemData.cost());
-            session.save(user);
-            session.save(userInventory);
-            session.save(userMerchant);
+            handleMerchantActionsUpdatesTransaction(session, user.getId(), userInventory, sellItemData, true);
 
             session.commitTransaction();
 
-            return new MerchantActionReturn(true, sellItemData.item(), "Successfully sold item");
+            return new MerchantActionReturn(true, Optional.of(sellItemData), "Successfully sold item");
         }catch(Exception e){
             throw new Exception(e.getMessage());
         }
@@ -118,6 +114,44 @@ public class MerchantsService {
     public Merchant update(Merchant merchant) {
         return datastore.save(merchant);
     }
+
+
+    public void handleMerchantActionsUpdatesTransaction(
+            MorphiaSession session, ObjectId userId, Inventory userInventory, Merchant.MerchantTransaction merchantTransaction, boolean isSell
+    ) {
+        Optional<Item> item = merchantTransaction.item();
+        if(item.isEmpty()) return;
+
+        session.find(Inventory.class)
+                .filter(Filters.eq("_id", userInventory.getId()))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                                Inventory.getMorphiaUpdateRemoveItems(Inventory.getItemsIds(List.of(item.get())), userInventory.getCurrentWeight()) :
+                                Inventory.getMorphiaUpdateAddItems(item.get(), userInventory.getCurrentWeight())
+                );
+
+        session.find(User.class)
+                .filter(Filters.eq("_id", userId))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                            User.getMorphiaIncreaseGold(merchantTransaction.cost()) :
+                            User.getMorphiaDecreaseGold(merchantTransaction.cost())
+
+                );
+
+        ItemMerchant itemMerchant = new ItemMerchant(item.get(), merchantTransaction.cost());
+        session.find(Merchant.class)
+                .filter(Filters.eq("user", userId))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                                Merchant.getMorphiaUpdateSellItem(itemMerchant) :
+                                Merchant.getMorphiaUpdateBuyItem(List.of(itemMerchant))
+                );
+    }
+
 
     public Merchant getOrCreateMerchant(User user, int mainCharacterLevel) throws Exception {
         Optional<Merchant> foundMerchant = this.findMerchantByUserId(user.getId());
