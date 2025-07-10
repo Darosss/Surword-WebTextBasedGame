@@ -2,9 +2,11 @@ package com.textbasedgame.merchants;
 
 import com.textbasedgame.items.Item;
 import dev.morphia.annotations.ExternalEntity;
+import dev.morphia.annotations.Reference;
 
 @ExternalEntity(target = ItemMerchant.class)
 public class ItemMerchant {
+    @Reference(idOnly = true, lazy = true)
     private Item item;
     private long cost;
 
@@ -27,5 +29,14 @@ public class ItemMerchant {
 
     public void setCost(long cost) {
         this.cost = cost;
+    }
+
+
+    @Override
+    public String toString() {
+        return "ItemMerchant{" +
+                "item=" + item +
+                ", cost=" + cost +
+                '}';
     }
 }
