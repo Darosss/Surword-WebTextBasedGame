@@ -24,6 +24,12 @@ public class TransactionsUtils {
     public static Inventory fetchUserInventory(MorphiaSession session, String userId) {
         return fetchUserInventory(session, new ObjectId(userId));
     }
+    public static Item fetchItem(MorphiaSession session, ObjectId itemId) {
+        return session.find(Item.class)
+                .filter(Filters.eq("id", itemId))
+                .first();
+
+    }
     public static <T extends Character>  T fetchCharacter(MorphiaSession session, ObjectId characterId, ObjectId userId, Class<T> characterClass) {
         return session.find(characterClass)
                 .filter(Filters.eq("user", userId) ,
