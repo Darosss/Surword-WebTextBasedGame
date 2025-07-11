@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import dev.morphia.annotations.Entity;
 import dev.morphia.annotations.Id;
 import dev.morphia.annotations.Reference;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -56,6 +58,14 @@ public class User {
        this.roles.add("USER");
        this.isActive = true;
        this.inventory = data.getInventory();
+    }
+
+    public static UpdateOperator getMorphiaIncreaseGold(long value) {
+        return UpdateOperators.inc("gold", value);
+    }
+
+    public static UpdateOperator getMorphiaDecreaseGold(long value) {
+        return UpdateOperators.dec("gold", value);
     }
 
     public ObjectId getId() { return this.id; }

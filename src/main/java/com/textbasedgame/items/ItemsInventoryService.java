@@ -6,8 +6,6 @@ import com.textbasedgame.users.inventory.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -28,10 +26,11 @@ public class ItemsInventoryService {
         Inventory userInventory = this.inventoryService.getUserInventory(user.getId());
         List<Item> createdItems = this.itemService.create(items);
         for(Item item: createdItems) {
-            item.setUser(user);
             userInventory.addItem(item);
         }
-        this.inventoryService.addItemsToInventory(userInventory.getId(), userInventory.getItems() == null ? new HashMap<>() :userInventory.getItems(), userInventory.getCurrentWeight());
+        this.inventoryService.addItemsToInventory(userInventory.getId(),
+                createdItems,
+                userInventory.getCurrentWeight());
         return CompletableFuture.completedFuture(true);
     }
 }

@@ -24,6 +24,12 @@ public class TransactionsUtils {
     public static Inventory fetchUserInventory(MorphiaSession session, String userId) {
         return fetchUserInventory(session, new ObjectId(userId));
     }
+    public static Item fetchItem(MorphiaSession session, ObjectId itemId) {
+        return session.find(Item.class)
+                .filter(Filters.eq("id", itemId))
+                .first();
+
+    }
     public static <T extends Character>  T fetchCharacter(MorphiaSession session, ObjectId characterId, ObjectId userId, Class<T> characterClass) {
         return session.find(characterClass)
                 .filter(Filters.eq("user", userId) ,
@@ -50,12 +56,7 @@ public class TransactionsUtils {
     }
 
     public static List<Item> handleCreatingNewItems(MorphiaSession session, List<Item> items){
-        List<Item> itemsDb = new ArrayList<>();
-        for (Item item : items) {
-            Item createdItem = session.save(item);
-            itemsDb.add(createdItem);
-        }
-        return itemsDb;
+        return session.save(items);
     }
 
     public static CharacterEquipment createNewEquipment(MorphiaSession session){

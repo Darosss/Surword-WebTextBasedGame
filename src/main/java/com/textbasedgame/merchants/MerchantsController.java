@@ -48,24 +48,24 @@ public class MerchantsController implements SecuredRestController {
     }
 
     @PostMapping("/buy-item/{itemId}")
-    public CustomResponse<Item> buyItemFromMerchant(
+    public CustomResponse<Merchant.MerchantTransaction> buyItemFromMerchant(
             @PathVariable String itemId
     ) throws Exception {
         MerchantsService.MerchantActionReturn returnData = this.service.buyItemFromMerchant(
                 this.authenticationFacade.getJwtTokenPayload().id(), itemId);
-        if(returnData.success() && returnData.item().isPresent())
-            return new CustomResponse<>(HttpStatus.OK, returnData.message(), returnData.item().get());
+        if(returnData.success() && returnData.transaction().isPresent())
+            return new CustomResponse<>(HttpStatus.OK, returnData.message(), returnData.transaction().get());
         throw new BadRequestException(returnData.message());
     }
 
     @PostMapping("/sell-item/{itemId}")
-    public CustomResponse<Item> sellItemToMerchant(
+    public CustomResponse<Merchant.MerchantTransaction> sellItemToMerchant(
             @PathVariable String itemId
     ) throws Exception {
         MerchantsService.MerchantActionReturn returnData = this.service.sellItemToMerchant(
                 this.authenticationFacade.getJwtTokenPayload().id(), itemId);
-        if(returnData.success() && returnData.item().isPresent())
-            return new CustomResponse<>(HttpStatus.OK, returnData.message(), returnData.item().get());
+        if(returnData.success() && returnData.transaction().isPresent())
+            return new CustomResponse<>(HttpStatus.OK, returnData.message(), returnData.transaction().get());
         throw new BadRequestException(returnData.message());
     }
 

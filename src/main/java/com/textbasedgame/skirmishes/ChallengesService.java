@@ -28,7 +28,7 @@ public class ChallengesService {
 
     public record CommonReturnData(Skirmish skirmish, FightReport report){}
     public record HandleCurrentChallengeReturn (String message, Optional<CommonReturnData> data){}
-    public record HandleDungeonReturn (String message, Optional<CommonReturnData> data){}
+    public record HandleDungeonReturn (String message, Optional<CommonReturnData> data, Optional<Dungeons.DungeonData> dungeonData){}
 
     @Autowired
     public ChallengesService(BattleManagerService battleManagerService, CharacterService characterService) {
@@ -57,13 +57,13 @@ public class ChallengesService {
         if(!skirmish.getDungeons().canStartFight())
             return new HandleDungeonReturn(
                     "You need to wait till: "+skirmish.getDungeons().getCanFightDate() + " to start a dungeon fight",
-                    Optional.empty());
+                    Optional.empty(), Optional.empty());
         if(dungeonLevel <=0)
-            return new HandleDungeonReturn("Dungeon level must be >=1", Optional.empty());
+            return new HandleDungeonReturn("Dungeon level must be >=1", Optional.empty(), Optional.empty());
         if(dungeonLevel > dungeons.getCurrentLevel())
             return new HandleDungeonReturn(
                     "You can't start a fight with dungeon level higher than current maximum level",
-                    Optional.empty()
+                    Optional.empty(), Optional.empty()
             );
 
         FightReport fightReport = this.completeStartedDungeonFight(user, dungeonLevel);
@@ -71,17 +71,19 @@ public class ChallengesService {
         LocalDateTime currentTime = LocalDateTime.now();
 
         String  responseMessage = "Your dungeon attempt failed";
-
+        //TODO: change to plusMinutes - changed for plusSeconds for debug
+        Optional<Dungeons.DungeonData> dungeonData = Optional.empty();
+        dungeons.setCanFightDate(currentTime.plusSeconds(waitTime));
         if(fightReport.getStatus().equals(FightReport.FightStatus.PLAYER_WIN)) {
-            //TODO: change to plusMinutes - changed for plusSeconds for debug
-            dungeons.setCanFightDate(currentTime.plusSeconds(waitTime));
             if (dungeonLevel == dungeons.getCurrentLevel()) {
-                dungeons.addCompletedDungeon(new Dungeons.DungeonData(dungeons.getCurrentLevel(), currentTime));
+                dungeonData =Optional.of(new Dungeons.DungeonData(dungeons.getCurrentLevel(), currentTime));
+                dungeons.addCompletedDungeon(dungeonData.get());
                 dungeons.increaseCurrentLevel();
             }
         }
         return new HandleDungeonReturn(responseMessage,
-                Optional.of(new CommonReturnData(skirmish, fightReport))
+                Optional.of(new CommonReturnData(skirmish, fightReport)),
+                dungeonData
                 );
     }
 

@@ -1,12 +1,16 @@
 package com.textbasedgame.merchants;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.textbasedgame.items.Item;
 import com.textbasedgame.users.User;
 import com.textbasedgame.users.inventory.Inventory;
+import com.textbasedgame.utils.AggregationUtils;
 import com.textbasedgame.utils.TransactionsUtils;
 import dev.morphia.Datastore;
+import dev.morphia.UpdateOptions;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.transactions.MorphiaSession;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,7 @@ import java.util.*;
 
 @Service
 public class MerchantsService {
+    private record FindItemDataByIdAggregationReturn(String item, int cost) {};
 
     private final Datastore datastore;
 
@@ -24,7 +29,7 @@ public class MerchantsService {
         this.datastore = datastore;
     }
 
-    public record MerchantActionReturn(boolean success, Optional<Item> item, String message){}
+    public record MerchantActionReturn(boolean success, Optional<Merchant.MerchantTransaction> transaction, String message){}
 
     public Optional<Merchant> findMerchantByUserId(ObjectId userId){
         return Optional.ofNullable(datastore.find(Merchant.class).filter(
@@ -47,35 +52,65 @@ public class MerchantsService {
             throw new Exception(e.getMessage());
         }
     };
+
+    private FindItemDataByIdAggregationReturn findItemDataByIdAggregation(MorphiaSession session, String userId, String itemId) {
+        List<Document> pipeline = List.of(
+                new Document("$match", new Document("user", new ObjectId(userId))),
+                new Document("$unwind", "$items"),
+                new Document("$match", new Document("items.item", new ObjectId(itemId))),
+                new Document("$project", new Document().append("_id", 0).append("items", 1)
+                )
+        );
+
+        List<Document> result = session.getDatabase()
+                .getCollection("merchants")
+                .aggregate(pipeline)
+                .into(new ArrayList<>());
+
+        Document firstResult = result.get(0);
+        ObjectMapper mapper = new ObjectMapper();
+
+        Document itemDoc = (Document) firstResult.get("items");
+        if(itemDoc.containsKey("item")) itemDoc.put("item", itemDoc.get("item").toString());
+
+        return mapper.convertValue(AggregationUtils.cleanMongoDocument(itemDoc), FindItemDataByIdAggregationReturn.class);
+    }
+
     public MerchantActionReturn buyItemFromMerchant(String userId, String itemId) throws Exception {
         try(MorphiaSession session = datastore.startSession()) {
             session.startTransaction();
 
-
             Inventory userInventory = TransactionsUtils.fetchUserInventory(session, userId);
-            Merchant userMerchant = TransactionsUtils.fetchUserMerchant(session, userId);
-            User user = TransactionsUtils.fetchUser(session, userId);
-            if(userInventory == null || userMerchant == null || user == null)
+
+            FindItemDataByIdAggregationReturn foundItemData = this.findItemDataByIdAggregation(session, userId, itemId);
+
+            if(foundItemData.item.isEmpty() || foundItemData.cost() <= 0) {
                 return new MerchantActionReturn(false, Optional.empty(),
-                        "Cannot find inventory or user or merchant data. Contact administration");
+                        "Cannot find item or cost from merchant. Contact administration");
+            }
 
+            Item item = TransactionsUtils.fetchItem(session, new ObjectId(foundItemData.item));
+            User user = TransactionsUtils.fetchUser(session, userId);
+            if(userInventory == null ||  user == null)
+                return new MerchantActionReturn(false, Optional.empty(),
+                        "Cannot find inventory or user. Contact administration");
 
-            Merchant.MerchantTransaction boughItemData = userMerchant.buyItemByItemId(itemId);
-            if(boughItemData.item().isEmpty())
+            Merchant.MerchantTransaction boughtItemData = new Merchant.MerchantTransaction(Optional.of(item), foundItemData.cost());
+            if(boughtItemData.item().isEmpty())
                 return new MerchantActionReturn(false, Optional.empty(), "This item does not exist in merchant commodity");
 
-            if(boughItemData.cost() > user.getGold())
+            if(boughtItemData.cost() > user.getGold())
                 return new MerchantActionReturn(false, Optional.empty(), "You do not have enough gold");
 
-            userInventory.addItem(boughItemData.item().get());
-            user.decreaseGold(boughItemData.cost());
-            session.save(user);
-            session.save(userInventory);
-            session.save(userMerchant);
+            userInventory.addItem(boughtItemData.item().get());
+
+            user.decreaseGold(boughtItemData.cost());
+
+            handleMerchantActionsUpdatesTransaction(session, user.getId(), userInventory, boughtItemData, false);
 
             session.commitTransaction();
 
-            return new MerchantActionReturn(true, boughItemData.item(), "Successfully bought item");
+            return new MerchantActionReturn(true, Optional.of(boughtItemData), "Successfully bought item");
         }catch(Exception e){
             throw new Exception(e.getMessage());
         }
@@ -86,12 +121,11 @@ public class MerchantsService {
             session.startTransaction();
 
             Inventory userInventory = TransactionsUtils.fetchUserInventory(session, userId);
-            Merchant userMerchant = TransactionsUtils.fetchUserMerchant(session, userId);
             User user = TransactionsUtils.fetchUser(session, userId);
 
-            if(userInventory == null || userMerchant == null || user == null)
+            if(userInventory == null || user == null)
                 return new MerchantActionReturn(false, Optional.empty(),
-                        "Cannot find inventory or user or merchant data. Contact administration");
+                        "Cannot find inventory or user. Contact administration");
 
 
             Optional<Item> item = userInventory.getItemById(itemId);
@@ -99,17 +133,13 @@ public class MerchantsService {
                     "This item does not exist in your inventory");
 
 
-            Merchant.MerchantTransaction sellItemData = userMerchant.sellItem(item.get());
-
+            Merchant.MerchantTransaction sellItemData = new Merchant.MerchantTransaction(item, item.get().getValue());
             userInventory.removeItemById(itemId);
-            user.increaseGold(sellItemData.cost());
-            session.save(user);
-            session.save(userInventory);
-            session.save(userMerchant);
+            handleMerchantActionsUpdatesTransaction(session, user.getId(), userInventory, sellItemData, true);
 
             session.commitTransaction();
 
-            return new MerchantActionReturn(true, sellItemData.item(), "Successfully sold item");
+            return new MerchantActionReturn(true, Optional.of(sellItemData), "Successfully sold item");
         }catch(Exception e){
             throw new Exception(e.getMessage());
         }
@@ -118,6 +148,45 @@ public class MerchantsService {
     public Merchant update(Merchant merchant) {
         return datastore.save(merchant);
     }
+
+
+    public void handleMerchantActionsUpdatesTransaction(
+            MorphiaSession session, ObjectId userId, Inventory userInventory, Merchant.MerchantTransaction merchantTransaction, boolean isSell
+    ) {
+        Optional<Item> item = merchantTransaction.item();
+        if(item.isEmpty()) return;
+
+
+        session.find(Inventory.class)
+                .filter(Filters.eq("_id", userInventory.getId()))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                                Inventory.getMorphiaUpdateRemoveItems(Inventory.getItemsIds(List.of(item.get())), userInventory.getCurrentWeight()) :
+                                Inventory.getMorphiaUpdateAddItems(item.get(), userInventory.getCurrentWeight())
+                );
+
+        session.find(User.class)
+                .filter(Filters.eq("_id", userId))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                            User.getMorphiaIncreaseGold(merchantTransaction.cost()) :
+                            User.getMorphiaDecreaseGold(merchantTransaction.cost())
+
+                );
+
+        ItemMerchant itemMerchant = new ItemMerchant(item.get(), merchantTransaction.cost());
+        session.find(Merchant.class)
+                .filter(Filters.eq("user", userId))
+                .update(
+                        new UpdateOptions(),
+                        isSell ?
+                                Merchant.getMorphiaUpdateSellItem(itemMerchant) :
+                                Merchant.getMorphiaUpdateBuyItem(List.of(itemMerchant))
+                );
+    }
+
 
     public Merchant getOrCreateMerchant(User user, int mainCharacterLevel) throws Exception {
         Optional<Merchant> foundMerchant = this.findMerchantByUserId(user.getId());

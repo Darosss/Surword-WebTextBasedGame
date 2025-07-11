@@ -3,19 +3,26 @@ package com.textbasedgame.skirmishes;
 import com.textbasedgame.users.User;
 import dev.morphia.Datastore;
 import dev.morphia.DeleteOptions;
+import dev.morphia.UpdateOptions;
 import dev.morphia.query.filters.Filters;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class SkirmishesService {
     private final Datastore datastore;
+    public record UpdateOnDungeonSuccessFight(
+            int currentLevel,
+            LocalDateTime canFightDate,
+            Dungeons.DungeonData dungeonData){};
 
-
+    public record UpdateOnDungeonFailedFight(LocalDateTime canFightDate) {}
     @Autowired
     public SkirmishesService(Datastore datastore) {
         this.datastore = datastore;
@@ -46,14 +53,54 @@ public class SkirmishesService {
         Optional<Skirmish> foundSkirmish = this.findOneByUserId(user.getId());
         if(foundSkirmish.isPresent()) {
             Skirmish skirmishInstance = foundSkirmish.get();
-            skirmishInstance.generateChallenges(challengesIteration);
-            return this.update(skirmishInstance);
+            Map<String, SkirmishData> newChallenges = skirmishInstance.generateChallenges(challengesIteration);
+            this.updateNewChallenges(skirmishInstance.getId(), newChallenges);
+            return skirmishInstance;
         };
         return create(user, challengesIteration);
     }
 
     public Skirmish update(Skirmish skirmish) {
         return datastore.save(skirmish);
+    }
+
+    public void updateNewChallenges(ObjectId skirmishId, Map<String, SkirmishData> challenges) {
+        this.updateNewChallenges(skirmishId, challenges.values().stream().toList());
+    }
+    public void updateNewChallenges(ObjectId skirmishId, List<SkirmishData> challenges) {
+        datastore.find(Skirmish.class).filter(Filters.eq("id", skirmishId))
+                .update(new UpdateOptions(),
+                        Skirmish.getMorphiaUpdateChallenges(challenges)
+                );
+    }
+    public void updateSetChosenChallenge(ObjectId skirmishId, Skirmish.ChosenChallenge challenge) {
+        datastore.find(Skirmish.class).filter(Filters.eq("id", skirmishId))
+                .update(new UpdateOptions(),
+                        Skirmish.getMorphiaSetChosenChallenge(challenge)
+                );
+    }
+    public void updateUnsetChosenChallenge(ObjectId skirmishId) {
+        datastore.find(Skirmish.class).filter(Filters.eq("id", skirmishId))
+                .update(new UpdateOptions(),
+                        Skirmish.getMorphiaUnsetChosenChallenge()
+                );
+    }
+
+    public void updateOnDungeonSuccessFight(ObjectId skirmishId, UpdateOnDungeonSuccessFight update) {
+        datastore.find(Skirmish.class).filter(Filters.eq("id", skirmishId))
+                .update(new UpdateOptions(),
+                        Skirmish.getMorphiaUpdateOnSuccessDungeon(
+                                update.currentLevel(),
+                                update.canFightDate(),
+                                update.dungeonData()
+                        )
+                );
+    }
+    public void updateOnDungeonFailedFight(ObjectId skirmishId, UpdateOnDungeonFailedFight update) {
+        datastore.find(Skirmish.class).filter(Filters.eq("id", skirmishId))
+                .update(new UpdateOptions(),
+                        Skirmish.getMorphiaUpdateOnFailedDungeon(update.canFightDate())
+                );
     }
 
     public void removeById(ObjectId id){

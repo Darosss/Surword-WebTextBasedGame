@@ -4,6 +4,8 @@ import com.textbasedgame.characters.equipment.CharacterEquipment;
 import com.textbasedgame.statistics.AdditionalStatisticsNamesEnum;
 import com.textbasedgame.statistics.BaseStatisticsNamesEnum;
 import com.textbasedgame.users.User;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +29,11 @@ public class MainCharacter extends Character {
                          Map<AdditionalStatisticsNamesEnum, Integer> additionalStatistics){
         super(name, user, equipment, level, baseStatistics, additionalStatistics);
     }
+
+    public static UpdateOperator getMorphiaSetExperience(long value) {
+        return UpdateOperators.set("experience", value);
+    }
+
     public LevelUpLogicReturn gainExperience(long experiencePoints) {
         if (experiencePoints > 0) {
             this.experience += experiencePoints;

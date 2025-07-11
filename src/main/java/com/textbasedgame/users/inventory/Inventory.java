@@ -5,14 +5,14 @@ import com.textbasedgame.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import dev.morphia.annotations.Entity;
-import dev.morphia.annotations.Id;
-import dev.morphia.annotations.Reference;
+import dev.morphia.annotations.*;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 import org.bson.types.ObjectId;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Entity("users_inventories")
 public class Inventory {
@@ -26,21 +26,58 @@ public class Inventory {
 
     @JsonIgnoreProperties("user")
     @Reference(idOnly = true)
-    private Map<String, Item> items;
+    private List<Item> items;
+
+    @Transient
+    private Map<String, Item> itemMap = new HashMap<>();
+
     private int maxItems=100;
     private float maxWeight=100;
     private float currentWeight = 0;
 
     public Inventory(){}
     public Inventory(int maxWeight) {
-        this.items = new HashMap<>();
+        this.items = new ArrayList<>();
         this.maxItems = 1000;
         this.maxWeight = maxWeight;
         this.currentWeight = 0;
     }
 
+    public static UpdateOperator[] getMorphiaUpdateAddItems(List<Item> items, float newWeight) {
+        if (items == null || items.isEmpty()) return new UpdateOperator[0];
+        return new UpdateOperator[] {
+                UpdateOperators.addToSet("items", items),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+    public static UpdateOperator[] getMorphiaUpdateAddItems(Item item, float newWeight) {
+        return new UpdateOperator[] {
+                UpdateOperators.addToSet("items", item),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+
+    public static UpdateOperator[] getMorphiaUpdateRemoveItems(List<ObjectId> itemsIds, float newWeight) {
+        if (itemsIds == null || itemsIds.isEmpty()) return new UpdateOperator[0];
+        return new UpdateOperator[] {
+                UpdateOperators.pullAll("items", itemsIds),
+                getMorphiaUpdateCurrentWeight(newWeight)
+        };
+    }
+    private static UpdateOperator getMorphiaUpdateCurrentWeight(Float value) {
+        return UpdateOperators.set("currentWeight", value);
+    }
+
     public Map<String, Item> getItems() {
-        return items;
+        return items.stream().collect(Collectors.toMap(
+                (item)->item.getId().toString(),
+                Function.identity(),
+                (existing, replacement) -> existing
+        ));
+    }
+
+    public static List<ObjectId> getItemsIds(List<Item> items) {
+        return items.stream().map(Item::getId).toList();
     }
 
     public int getMaxItems() {
@@ -55,17 +92,28 @@ public class Inventory {
         return currentWeight;
     }
 
+    public void syncToList() {
+        this.items = new ArrayList<>(itemMap.values());
+    }
+
+    @PostLoad
+    public void rebuildMap() {
+        this.itemMap = this.items == null ? new HashMap<>() : this.items.stream()
+                .collect(Collectors.toMap((item)->item.getId().toString(), Function.identity()));
+    }
+
     public boolean addItem(Item item) {
-        if(this.items == null) this.items = new HashMap<>();
-        if (this.items.size() >= this.maxItems || this.currentWeight + item.getWeight() > this.maxWeight) {
+        if(this.itemMap == null) this.itemMap = new HashMap<>();
+        if (this.itemMap.size() >= this.maxItems || this.currentWeight + item.getWeight() > this.maxWeight) {
             return false;
         }
-        items.put(item.getId().toString(), item);
+        itemMap.put(item.getId().toString(), item);
         currentWeight += item.getWeight();
+        this.syncToList();
         return true;
     }
     public boolean addItems(Item[] newItems) {
-        if(this.items == null) this.items = new HashMap<>();
+        if(this.itemMap == null) this.itemMap = new HashMap<>();
         for(Item item: newItems) {
             this.addItem(item);
         }
@@ -73,11 +121,11 @@ public class Inventory {
 
     }
 
-
     public Optional<Item> removeItemById(String id) {
-        if (this.items.containsKey(id)) {
-            Item item = this.items.remove(id);
+        if (this.itemMap.containsKey(id)) {
+            Item item = this.itemMap.remove(id);
             currentWeight -= item.getWeight();
+            this.syncToList();
             return Optional.of(item);
         }
         return Optional.empty();
@@ -105,7 +153,7 @@ public class Inventory {
     }
 
     public void setItems(Map<String, Item> items) {
-        this.items = items;
+        this.itemMap = items;
     }
 
     public void setMaxItems(int maxItems) {
@@ -121,7 +169,7 @@ public class Inventory {
     }
 
     public Optional<Item> getItemById(String itemId) {
-        return Optional.ofNullable(this.items.get(itemId));
+        return Optional.ofNullable(this.itemMap.get(itemId));
     }
     @Override
     public String toString() {
