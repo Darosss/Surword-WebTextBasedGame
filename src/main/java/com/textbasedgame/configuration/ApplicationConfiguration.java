@@ -8,6 +8,7 @@ import dev.morphia.config.MorphiaConfig;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -46,7 +47,8 @@ class ApplicationConfiguration {
         return new MongoTemplate(mongoClient, DB_NAME);
     }
 
-    @Bean
+    @Bean(name = "taskExecutor")
+    @Primary
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor exec = new ThreadPoolTaskExecutor();
         exec.setCorePoolSize(5);
