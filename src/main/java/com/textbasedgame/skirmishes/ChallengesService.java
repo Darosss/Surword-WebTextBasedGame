@@ -2,10 +2,8 @@ package com.textbasedgame.skirmishes;
 
 import com.textbasedgame.battle.BattleManagerService;
 import com.textbasedgame.battle.reports.FightReport;
+import com.textbasedgame.characters.*;
 import com.textbasedgame.characters.Character;
-import com.textbasedgame.characters.CharacterService;
-import com.textbasedgame.characters.MainCharacter;
-import com.textbasedgame.characters.MercenaryCharacter;
 import com.textbasedgame.enemies.Enemy;
 import com.textbasedgame.enemies.EnemyType;
 import com.textbasedgame.enemies.EnemyUtils;
@@ -25,15 +23,17 @@ import java.util.Optional;
 public class ChallengesService {
     private final BattleManagerService battleManagerService;
     private final CharacterService characterService;
+    private final MainCharacterService mainCharacterService;
 
     public record CommonReturnData(Skirmish skirmish, FightReport report){}
     public record HandleCurrentChallengeReturn (String message, Optional<CommonReturnData> data){}
     public record HandleDungeonReturn (String message, Optional<CommonReturnData> data, Optional<Dungeons.DungeonData> dungeonData){}
 
     @Autowired
-    public ChallengesService(BattleManagerService battleManagerService, CharacterService characterService) {
+    public ChallengesService(BattleManagerService battleManagerService, CharacterService characterService, MainCharacterService mainCharacterService) {
         this.battleManagerService = battleManagerService;
         this.characterService = characterService;
+        this.mainCharacterService = mainCharacterService;
     }
 
     public HandleCurrentChallengeReturn getAndHandleCurrentChallenge(Skirmish skirmish, User user) throws Exception {
@@ -52,7 +52,7 @@ public class ChallengesService {
                 Optional.of(new CommonReturnData(skirmish, fightReport)));
     }
 
-    public HandleDungeonReturn handleDungeonFight(Skirmish skirmish, User user, int dungeonLevel, int waitTime) throws Exception {
+    public HandleDungeonReturn handleDungeonFight(Skirmish skirmish, User user, int dungeonLevel, long waitTimeSeconds) throws Exception {
         Dungeons dungeons = skirmish.getDungeons();
         if(!skirmish.getDungeons().canStartFight())
             return new HandleDungeonReturn(
@@ -71,9 +71,8 @@ public class ChallengesService {
         LocalDateTime currentTime = LocalDateTime.now();
 
         String  responseMessage = "Your dungeon attempt failed";
-        //TODO: change to plusMinutes - changed for plusSeconds for debug
         Optional<Dungeons.DungeonData> dungeonData = Optional.empty();
-        dungeons.setCanFightDate(currentTime.plusSeconds(waitTime));
+        dungeons.setCanFightDate(currentTime.plusSeconds(waitTimeSeconds));
         if(fightReport.getStatus().equals(FightReport.FightStatus.PLAYER_WIN)) {
             if (dungeonLevel == dungeons.getCurrentLevel()) {
                 dungeonData =Optional.of(new Dungeons.DungeonData(dungeons.getCurrentLevel(), currentTime));
@@ -128,7 +127,7 @@ public class ChallengesService {
     }
 
     private void handleOnFinishFight(FightReport report, MainCharacter mainCharacter, boolean updateMainHeroHP){
-        MainCharacter.LevelUpLogicReturn leveledUp = mainCharacter.gainExperience(report.getGainedExperience());
+        MainCharacterService.LevelUpLogicReturn leveledUp = mainCharacterService.gainExperience(mainCharacter, report.getGainedExperience());
 
         Optional<Integer> hp = updateMainHeroHP ? Optional.of(mainCharacter.getHealth()): leveledUp.gainedLevels() > 0 ? Optional.of(mainCharacter.getAdditionalStatEffective(AdditionalStatisticsNamesEnum.MAX_HEALTH)) : Optional.empty();
         this.characterService.handlePostFightUpdate(mainCharacter.getId().toString(),
