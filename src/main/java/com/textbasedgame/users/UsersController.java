@@ -2,7 +2,7 @@ package com.textbasedgame.users;
 
 import com.textbasedgame.auth.AuthenticationFacade;
 import com.textbasedgame.auth.JwtTokenPayload;
-import com.textbasedgame.auth.LoggedUserUtils;
+import com.textbasedgame.auth.LoggedUserService;
 import com.textbasedgame.auth.SecuredRestController;
 import com.textbasedgame.common.ResourceNotFoundException;
 import com.textbasedgame.response.CustomResponse;
@@ -17,11 +17,14 @@ import java.util.Optional;
 public class UsersController implements SecuredRestController {
     private final AuthenticationFacade authenticationFacade;
     private final UserService service;
+    private final LoggedUserService loggedUserService;
     @Autowired()
     UsersController( AuthenticationFacade authenticationFacade,
-                     UserService service) {
+                     UserService service,
+                     LoggedUserService loggedUserService) {
         this.authenticationFacade = authenticationFacade;
         this.service = service;
+        this.loggedUserService = loggedUserService;
     }
     @GetMapping("/users")
     public CustomResponse<List<User>> findAll() {
@@ -33,9 +36,9 @@ public class UsersController implements SecuredRestController {
         return new CustomResponse<>(HttpStatus.OK, authenticationFacade.getJwtTokenPayload());
     }
     @GetMapping("/profile")
-    public CustomResponse<LoggedUserUtils.ProfileUserDetails> getProfile() throws Exception {
+    public CustomResponse<LoggedUserService.ProfileUserDetails> getProfile() throws Exception {
         return new CustomResponse<>(HttpStatus.OK,
-                LoggedUserUtils.getProfileUserDetails(this.authenticationFacade, this.service));
+                this.loggedUserService.getProfileUserDetails(this.authenticationFacade, this.service));
     }
     @GetMapping("users/{id}")
     public CustomResponse<User> getUserById(@PathVariable String id){
