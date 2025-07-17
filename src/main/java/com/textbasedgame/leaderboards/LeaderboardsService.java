@@ -1,10 +1,9 @@
 package com.textbasedgame.leaderboards;
 
 import com.textbasedgame.characters.BaseHero;
-import com.textbasedgame.characters.CharacterInventoryService;
 import com.textbasedgame.characters.CharacterService;
 import com.textbasedgame.characters.MainCharacter;
-import com.textbasedgame.settings.Settings;
+import com.textbasedgame.settings.AppConfigManager;
 import com.textbasedgame.skirmishes.Skirmish;
 import com.textbasedgame.skirmishes.SkirmishesService;
 import dev.morphia.Datastore;
@@ -12,7 +11,6 @@ import dev.morphia.query.filters.Filters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -24,21 +22,23 @@ import java.util.Optional;
 
 @Service
 public class LeaderboardsService {
-    private static final Logger logger = LoggerFactory.getLogger(CharacterInventoryService.class);
+    private static final Logger logger = LoggerFactory.getLogger(LeaderboardsService.class);
 
     private final CharacterService characterService;
     private final SkirmishesService skirmishesService;
     private final Datastore datastore;
     private LocalDateTime nextRefreshAt;
+    private final AppConfigManager appConfigManager;
     @Autowired
-    public LeaderboardsService(Datastore datastore, CharacterService characterService, SkirmishesService skirmishesService){
+    public LeaderboardsService(Datastore datastore, CharacterService characterService,
+                               SkirmishesService skirmishesService, AppConfigManager appConfigManager){
         this.datastore = datastore;
         this.characterService = characterService;
         this.skirmishesService = skirmishesService;
+        this.appConfigManager = appConfigManager;
     }
 
-    @Scheduled(initialDelay = 0, fixedRate = Settings.LEADERBOARD_REFRESH_COOLDOWN_MS)
-    private void updateLeaderboardScheduled() {
+    public void updateLeaderboardScheduled() {
         for (Leaderboard.LeaderboardCategory cat : Leaderboard.LeaderboardCategory.values()){
             Leaderboard leaderboard = this.getOrCreateLeaderboardByCategory(cat);
             List<Leaderboard.LeaderboardData> dataForLevels = this.calculateLeaderboardData(cat);
@@ -46,7 +46,7 @@ public class LeaderboardsService {
             this.update(leaderboard);
             logger.debug("Update cat leaderboard: {}", cat);
         }
-        this.nextRefreshAt = LocalDateTime.now().plus(Duration.ofMillis(Settings.LEADERBOARD_REFRESH_COOLDOWN_MS));
+        this.nextRefreshAt = LocalDateTime.now().plus(Duration.ofMillis(this.appConfigManager.getSystemConfig().getLeaderboardRefreshCooldownMs()));
     }
 
     public LocalDateTime getNextRefreshAt() {
@@ -62,8 +62,7 @@ public class LeaderboardsService {
     }
 
     private List<Leaderboard.LeaderboardData> updateLevelsLeaderboard() {
-        List<MainCharacter> mainCharacters = new ArrayList<>(this.characterService.findAll(MainCharacter.class));
-
+        List<MainCharacter> mainCharacters = this.characterService.findAll(MainCharacter.class);
 
         if(mainCharacters.size() > 1) mainCharacters.sort(
                 Comparator.comparingInt(BaseHero::getLevel).reversed());
@@ -74,7 +73,6 @@ public class LeaderboardsService {
             leaderboardData.add(new Leaderboard.LeaderboardData(place++,
                     character.getUser().getId().toString(), character.getUser().getUsername(), character.getLevel()));
         }
-
         return leaderboardData;
     }
 
