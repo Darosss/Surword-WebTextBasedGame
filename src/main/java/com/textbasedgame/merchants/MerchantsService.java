@@ -2,6 +2,8 @@ package com.textbasedgame.merchants;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.textbasedgame.items.Item;
+import com.textbasedgame.settings.AppConfigManager;
+import com.textbasedgame.settings.LootService;
 import com.textbasedgame.users.User;
 import com.textbasedgame.users.inventory.Inventory;
 import com.textbasedgame.utils.AggregationUtils;
@@ -21,12 +23,15 @@ import java.util.*;
 @Service
 public class MerchantsService {
     private record FindItemDataByIdAggregationReturn(String item, int cost) {};
-
+    private final AppConfigManager appConfigManager;
+    private final LootService lootService;
     private final Datastore datastore;
 
     @Autowired
-    public MerchantsService(Datastore datastore) {
+    public MerchantsService(Datastore datastore, AppConfigManager appConfigManager, LootService lootService) {
         this.datastore = datastore;
+        this.appConfigManager = appConfigManager;
+        this.lootService = lootService;
     }
 
     public record MerchantActionReturn(boolean success, Optional<Merchant.MerchantTransaction> transaction, String message){}
@@ -44,7 +49,7 @@ public class MerchantsService {
             session.startTransaction();
 
             Merchant createdMerchant = session.save(
-                    new Merchant(user, TransactionsUtils.handleCreatingNewItems(session, items)));
+                    new Merchant(user, TransactionsUtils.handleCreatingNewItems(session, items), appConfigManager.getMerchantConfig()));
             session.commitTransaction();
 
             return createdMerchant;
@@ -133,7 +138,8 @@ public class MerchantsService {
                     "This item does not exist in your inventory");
 
 
-            Merchant.MerchantTransaction sellItemData = new Merchant.MerchantTransaction(item, item.get().getValue());
+            Merchant.MerchantTransaction sellItemData = new Merchant.MerchantTransaction(item,
+                    (long) (item.get().getValue() * appConfigManager.getMerchantConfig().getSellCostValueMultiplier()));
             userInventory.removeItemById(itemId);
             handleMerchantActionsUpdatesTransaction(session, user.getId(), userInventory, sellItemData, true);
 
@@ -192,13 +198,13 @@ public class MerchantsService {
         Optional<Merchant> foundMerchant = this.findMerchantByUserId(user.getId());
 
         if(foundMerchant.isEmpty()) {
-            List<Item> items = MerchantsUtils.generateMerchantsItems(user, mainCharacterLevel);
+            List<Item> items = MerchantsUtils.generateMerchantsItems(user, mainCharacterLevel, this.lootService.getCurrentRaritiesBonuses());
             return this.create(user, items);
         }
 
         Merchant merchant = foundMerchant.get();
         if(merchant.isCommodityExpired()) {
-            List<Item> newItems = MerchantsUtils.generateMerchantsItems(user, mainCharacterLevel);
+            List<Item> newItems = MerchantsUtils.generateMerchantsItems(user, mainCharacterLevel, this.lootService.getCurrentRaritiesBonuses());
 
             this.handleRefreshCommodity(merchant, newItems);
         }
@@ -216,7 +222,7 @@ public class MerchantsService {
                         .filter(Filters.eq("id", new ObjectId(itemId)))
                         .delete();
             }
-            merchant.setNewCommodity(TransactionsUtils.handleCreatingNewItems(session, newItems));
+            merchant.setNewCommodity(TransactionsUtils.handleCreatingNewItems(session, newItems), appConfigManager.getMerchantConfig());
             session.save(merchant);
             session.commitTransaction();
         } catch (Exception e) {
