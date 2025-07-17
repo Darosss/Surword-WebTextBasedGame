@@ -2,6 +2,7 @@ package com.textbasedgame.settings;
 
 public enum ModifierType {
     XP,
+    GOLD,
     ITEMS_LOOT,
     BETTER_RARITY,
     BETTER_RARITY_UNCOMMON,
