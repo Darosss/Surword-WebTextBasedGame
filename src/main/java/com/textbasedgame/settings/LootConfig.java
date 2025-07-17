@@ -24,6 +24,12 @@ public class LootConfig {
     private final RaritiesBonuses raritiesBonusMultipliers;
     private final double itemChanceBonusMultiplier;
 
+    LootConfig() {
+        LootConfig df = LootConfig.defaults();
+        this.raritiesBonusMultipliers= df.raritiesBonusMultipliers;
+        this.itemChanceBonusMultiplier = df.itemChanceBonusMultiplier;
+    }
+
     LootConfig(RaritiesBonuses raritiesBonuses, double itemChanceBonusMultiplier) {
         this.raritiesBonusMultipliers= raritiesBonuses;
         this.itemChanceBonusMultiplier = itemChanceBonusMultiplier;
