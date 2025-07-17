@@ -1,14 +1,14 @@
 package com.textbasedgame.skirmishes;
 
 import com.textbasedgame.auth.AuthenticationFacade;
-import com.textbasedgame.auth.LoggedUserUtils;
+import com.textbasedgame.auth.LoggedUserService;
 import com.textbasedgame.auth.SecuredRestController;
 import com.textbasedgame.battle.reports.FightReport;
 import com.textbasedgame.characters.MainCharacter;
 import com.textbasedgame.items.Item;
 import com.textbasedgame.items.ItemsInventoryService;
 import com.textbasedgame.response.CustomResponse;
-import com.textbasedgame.settings.Settings;
+import com.textbasedgame.settings.AppConfigManager;
 import com.textbasedgame.statistics.AdditionalStatisticsNamesEnum;
 import com.textbasedgame.users.User;
 import com.textbasedgame.users.UserService;
@@ -33,30 +33,36 @@ public class SkirmishesController implements SecuredRestController {
     private final SkirmishesService service;
     private final ChallengesService challengesService;
     private final ItemsInventoryService itemsInventoryService;
+    private final LoggedUserService loggedUserService;
+    private final AppConfigManager appConfigManager;
 
 
     @Autowired
     public SkirmishesController(AuthenticationFacade authenticationFacade,
                                 SkirmishesService skirmishesService,
                                 UserService userService, ChallengesService challengesService,
-                                ItemsInventoryService itemsInventoryService) {
+                                ItemsInventoryService itemsInventoryService,
+                                LoggedUserService loggedUserService,
+                                AppConfigManager appConfigManager) {
         this.authenticationFacade = authenticationFacade;
         this.userService = userService;
         this.service = skirmishesService;
         this.challengesService = challengesService;
         this.itemsInventoryService = itemsInventoryService;
+        this.loggedUserService = loggedUserService;
+        this.appConfigManager = appConfigManager;
     }
 
     @GetMapping("/your-skirmishes")
     public CustomResponse<Skirmish> getYourSkirmishes() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
         return new CustomResponse<>(HttpStatus.OK, this.service.getOrCreateSkirmish(loggedUser, 2));
     }
 
 
     @GetMapping("/current-challenge")
     public CustomResponse<FightReport> getChallengeStatus() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
@@ -79,7 +85,7 @@ public class SkirmishesController implements SecuredRestController {
     public CustomResponse<Boolean> startSkirmishChallenge(
             @PathVariable String challengeId
     ) throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         MainCharacter mainChar =  loggedUser.getMainCharacter().get();
         double minHP = mainChar.getAdditionalStatEffective(AdditionalStatisticsNamesEnum.MAX_HEALTH) * 0.1;
@@ -87,7 +93,7 @@ public class SkirmishesController implements SecuredRestController {
             throw new BadRequestException(String.format("To start a skirmish you need at least %f HP", minHP));
 
         //TODO: make it from configs plusMinutes - remember(Changed for debug)
-        LocalDateTime challengeFinishTimestamp = LocalDateTime.now().plusSeconds(Settings.CHALLENGE_WAIT_COOLDOWN_MINUTES);
+        LocalDateTime challengeFinishTimestamp = LocalDateTime.now().plusSeconds(this.appConfigManager.getSkirmishOpts().getChallengeCooldownMS() / 60);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
         Skirmish.ChosenChallenge chosenChallenge = new Skirmish.ChosenChallenge(challengeId, challengeFinishTimestamp);
@@ -105,7 +111,7 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/cancel-current-challenge")
     public CustomResponse<Boolean> cancelCurrentChallenge() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
@@ -119,7 +125,7 @@ public class SkirmishesController implements SecuredRestController {
     }
     @GetMapping("/dungeons")
     public CustomResponse<Dungeons> getDungeons() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
         Skirmish skirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
         return new CustomResponse<>(HttpStatus.OK, skirmish.getDungeons());
@@ -127,14 +133,14 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/dungeons/start-a-fight/{dungeonLevel}")
     public CustomResponse<FightReport> startDungeonFight(@PathVariable int dungeonLevel) throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
         ChallengesService.HandleDungeonReturn returnData =
         this.challengesService.handleDungeonFight(
                 foundSkirmish, loggedUser,
-                dungeonLevel, Settings.DUNGEON_WAIT_COOLDOWN_MINUTES
+                dungeonLevel,  this.appConfigManager.getSkirmishOpts().getDungeonCooldownMS() / 60
         );
         if(returnData.data().isEmpty()) throw new BadRequestException(returnData.message());
 
@@ -165,13 +171,13 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/debug/generate-new-challenges")
     public CustomResponse<Skirmish> generateNewChallenges() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         return new CustomResponse<>(HttpStatus.OK, this.service.generateNewChallengesForUser(loggedUser, 2));
     }
     @GetMapping("/debug/delete-existing-create-debug-data")
     public CustomResponse<Skirmish> createDebug() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         Optional<Skirmish> foundSkirmish = this.service.findOneByUserId(loggedUser.getId());
         foundSkirmish.ifPresent(skirmish -> this.service.removeById(skirmish.getId()));
