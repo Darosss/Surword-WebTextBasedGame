@@ -3,6 +3,7 @@ package com.textbasedgame.enemies;
 import com.textbasedgame.items.Item;
 import com.textbasedgame.items.ItemTypeEnum;
 import com.textbasedgame.items.ItemUtils;
+import com.textbasedgame.settings.LootConfig;
 import com.textbasedgame.skirmishes.EnemySkirmishDifficulty;
 import com.textbasedgame.statistics.AdditionalStatisticsNamesEnum;
 import com.textbasedgame.statistics.BaseStatisticsNamesEnum;
@@ -21,7 +22,7 @@ public class EnemyUtils {
     private static final Logger logger = LoggerFactory.getLogger(EnemyUtils.class);
 
     public record LevelRange(int min, int max){}
-
+    public record CheckLootFromEnemyBaseContext(User forUser, EnemyType type, int enemyLevel, boolean survived){}
     public record ItemProbabilityLoot(double percent, int minItems, int maxItems){};
     public static LevelRange getEnemyLevelRanges(EnemySkirmishDifficulty difficulty, int characterLevel){
         return switch (difficulty){
@@ -139,8 +140,8 @@ public class EnemyUtils {
         };
     }
 
-    private static ItemProbabilityLoot getItemProbabilityLootByEnemyType(EnemyType type, boolean isAlive){
-        double isAlivePercentAdjust = isAlive ? 0.8 : 1;
+    private static ItemProbabilityLoot getItemProbabilityLootByEnemyType(EnemyType type, boolean survived){
+        double isAlivePercentAdjust = survived ? 0.8 : 1;
         return switch (type){
             case COMMON -> new ItemProbabilityLoot(15 * isAlivePercentAdjust, 1, 1);
             case UNCOMMON -> new ItemProbabilityLoot(28 * isAlivePercentAdjust, 1, 1);
@@ -151,17 +152,17 @@ public class EnemyUtils {
         };
     }
 
-    public static List<Item> checkLootFromEnemy(User forUser, EnemyType type, int enemyLevel, boolean isAlive){
+    public static List<Item> checkLootFromEnemy(CheckLootFromEnemyBaseContext context, LootConfig lootConfig){
         List<Item> items = new ArrayList<>();
-        ItemProbabilityLoot itemProbData = getItemProbabilityLootByEnemyType(type, isAlive);
+        ItemProbabilityLoot itemProbData = getItemProbabilityLootByEnemyType(context.type, context.survived);
         logger.debug("Item prob data, percent: {}, minItems: {}, maxItems: {}", itemProbData.percent(), itemProbData.minItems(), itemProbData.maxItems());
         if(RandomUtils.checkPercentageChance(itemProbData.percent())) {
             int numberOfItems = RandomUtils.getRandomValueWithinRange(itemProbData.minItems(), itemProbData.maxItems());
             for (int i = 0; i< numberOfItems; i++){
-                int itemLevel = RandomUtils.getRandomValueWithinRange(Math.max(1, enemyLevel - 5), enemyLevel + 8);
+                int itemLevel = RandomUtils.getRandomValueWithinRange(Math.max(1, context.enemyLevel - 5), context.enemyLevel + 8);
                 ItemTypeEnum itemType = ItemUtils.getRandomItemType();
                 items.add(ItemUtils.generateRandomItemWithoutBaseStats(
-                        forUser, itemLevel, itemType, Optional.empty())
+                        context.forUser, itemLevel, itemType, lootConfig.getRaritiesBonusMultipliers(),Optional.empty())
                 );
             }
 
@@ -169,7 +170,7 @@ public class EnemyUtils {
                 logger.debug("Looted item. Item level: {}, itemName: {}", item.getLevel(), item.getName());
             }
         }else {
-            logger.debug("Didn't loot any items from enemy type: {}, level: {}, isAlive: {}", type, enemyLevel, isAlive);
+            logger.debug("Didn't loot any items from enemy type: {}, level: {}, survived: {}", context.type, context.enemyLevel, context.survived);
         }
         return items;
     }
