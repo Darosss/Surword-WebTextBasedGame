@@ -6,10 +6,12 @@ import com.textbasedgame.battle.data.AttackReturnData;
 import com.textbasedgame.characters.BaseHero;
 import com.textbasedgame.characters.Character;
 import com.textbasedgame.battle.data.DefendReturnData;
-import com.textbasedgame.characters.ExperienceUtils;
+import com.textbasedgame.characters.XpUtils;
 import com.textbasedgame.enemies.Enemy;
 import com.textbasedgame.enemies.EnemyUtils;
 import com.textbasedgame.items.Item;
+import com.textbasedgame.settings.LootService;
+import com.textbasedgame.settings.XpService;
 import com.textbasedgame.statistics.AdditionalStatisticsNamesEnum;
 import com.textbasedgame.users.User;
 import com.textbasedgame.utils.CurrenciesUtils;
@@ -24,6 +26,10 @@ import java.util.stream.Stream;
 public class Fight {
     private static final Logger logger = LoggerFactory.getLogger(Fight.class);
     //TODO: later add fight options(bonuses) - for example: loot multiplier from fight, exp multiplier etc. etc;
+
+    public final XpService xpService;
+    public final LootService lootService;
+
     private final int maxTurns;
     private final int baseInitiativePerCycle = 20;
     private final int minimumBaseCapInitiative = 50;
@@ -38,7 +44,9 @@ public class Fight {
     private final User user;
     private final List<ObjectId> turnParticipants = new ArrayList<>();
 
-    Fight(User user, List<Character> characters, List<Enemy> enemies, int maxTurns, int mainHeroLevel, boolean mustKillEnemyToWin) {
+    Fight(XpService xpService,
+          LootService lootService,
+          User user, List<Character> characters, List<Enemy> enemies, int maxTurns, int mainHeroLevel, boolean mustKillEnemyToWin) {
 
         this.calculateMinimumInitiativeOfLevelsMean(
                 IntStream.concat(
@@ -46,6 +54,8 @@ public class Fight {
                         enemies.stream().mapToInt(Enemy::getLevel)
                 ).toArray()
         );
+        this.xpService = xpService;
+        this.lootService = lootService;
         this.user = user;
         this.userHeroesDetails = this.prepareUserHeroesDetails(characters);
         this.enemyHeroesDetails = this.prepareEnemiesHeroesDetails(enemies);
@@ -59,8 +69,8 @@ public class Fight {
             ).toList());
     }
 
-    Fight(User user, List<Character> characters, List<Enemy> enemies, int mainHeroLevel, boolean mustKillEnemyToWin){
-        this(user, characters, enemies, 50, mainHeroLevel, mustKillEnemyToWin);
+    Fight(XpService xpService, LootService lootService, User user, List<Character> characters, List<Enemy> enemies, int mainHeroLevel, boolean mustKillEnemyToWin){
+        this(xpService, lootService, user, characters, enemies, 50, mainHeroLevel, mustKillEnemyToWin);
     }
 
     private void calculateMinimumInitiativeOfLevelsMean(int[] levels) {
@@ -139,12 +149,15 @@ public class Fight {
             this.enemyHeroesDetails.values().forEach((hero)->{
                 Enemy enemy = (Enemy) hero.getHero();
                 this.fightReport.increaseGainedExperience(
-                        ExperienceUtils.calculateExperienceFromEnemy(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), true)
+                        this.xpService.awardXpFromEnemy(new XpUtils.EncounterContext(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), true))
                 );
                 this.fightReport.increaseGainedGold(
                         CurrenciesUtils.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), true)
                 );
-                List<Item> loot = EnemyUtils.checkLootFromEnemy(this.user, enemy.getType(), enemy.getLevel(), true);
+                List<Item> loot = EnemyUtils.checkLootFromEnemy(
+                            new EnemyUtils.CheckLootFromEnemyBaseContext(this.user, enemy.getType(), enemy.getLevel(), true),
+                            this.lootService.getCurrentLootConfig()
+                        );
                 this.fightReport.addLootItems(loot);
             });
         }
@@ -257,13 +270,16 @@ public class Fight {
         Enemy enemy = (Enemy) this.enemyHeroesDetails.get(heroId).getHero();
         if(enemy.getHealth() <= 0){
             this.fightReport.increaseGainedExperience(
-                    ExperienceUtils.calculateExperienceFromEnemy(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), false)
-            );
+                    this.xpService.awardXpFromEnemy(new XpUtils.EncounterContext(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), false))
+                    );
             this.fightReport.increaseGainedGold(
                     CurrenciesUtils.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), false)
             );
 
-            List<Item> loot = EnemyUtils.checkLootFromEnemy(this.user, enemy.getType(), enemy.getLevel(), false);
+            List<Item> loot = EnemyUtils.checkLootFromEnemy(
+                    new EnemyUtils.CheckLootFromEnemyBaseContext(this.user, enemy.getType(), enemy.getLevel(), false),
+                    this.lootService.getCurrentLootConfig()
+            );
             this.fightReport.addLootItems(loot);
 
             this.fightReport.addToEnemies(enemy);
