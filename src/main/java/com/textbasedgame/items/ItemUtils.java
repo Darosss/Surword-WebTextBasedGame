@@ -1,6 +1,7 @@
 package com.textbasedgame.items;
 
 import com.textbasedgame.items.statistics.*;
+import com.textbasedgame.settings.LootConfig;
 import com.textbasedgame.users.User;
 import com.textbasedgame.utils.RandomUtils;
 import org.springframework.data.util.Pair;
@@ -67,16 +68,16 @@ public class ItemUtils {
       };
     }
 
-
-    public static ItemRarityEnum getRandomRarityItem(){
-        return getRandomRarityItem(1);
-    }
-    public static ItemRarityEnum getRandomRarityItem(double additionalBonusMultiplier) {
+    public static ItemRarityEnum getRandomRarityItem(LootConfig.RaritiesBonuses bonuses) {
         double randomDouble = RandomUtils.getRandomValueWithinRange(0, 1.0);
         ItemRarityEnum[] values =ItemRarityEnum.values();
+
         for(int i = values.length - 1; i >= 0; i--){
             ItemRarityEnum currentRarity = values[i];
-            double probabilityWithBonus = Math.min(1.0, currentRarity.getProbability() * Math.max(0.1, additionalBonusMultiplier));
+            double baseProbability = currentRarity.getProbability();
+            double rarityBonus     = bonuses.rarityBonuses().getOrDefault(currentRarity, 1.0);
+            double adjustedModifier = Math.max(0.1, bonuses.baseFactor() * rarityBonus);
+            double probabilityWithBonus = Math.min(1.0, baseProbability * adjustedModifier);
             if(randomDouble <= probabilityWithBonus) return currentRarity;
         }
 
@@ -129,9 +130,10 @@ public class ItemUtils {
 
     }
 
-    public static Item generateRandomItemWithoutBaseStats(User user, int itemLevel, ItemTypeEnum itemType, Optional<String> overrideName){
+    public static Item generateRandomItemWithoutBaseStats(User user, int itemLevel, ItemTypeEnum itemType,
+                                                          LootConfig.RaritiesBonuses raritiesBonuses, Optional<String> overrideName){
         ItemsSubtypes subtype = RandomUtils.getRandomItemFromArray(itemType.getSubtypes());
-        ItemRarityEnum rarity = getRandomRarityItem();
+        ItemRarityEnum rarity = getRandomRarityItem(raritiesBonuses);
         ItemPrefixesEnum randomPrefix = getRandomItemPrefix();
         ItemSuffixesEnum randomSuffix = getRandomItemSuffix();
         GenerateItemNameDesc nameDescData = generateItemNameDesc(overrideName, rarity, randomPrefix, randomSuffix, subtype);
@@ -142,28 +144,15 @@ public class ItemUtils {
 
 
 
-    //NOTE: That's for debug right now;
-    public static Item generateRandomItem(User user, String name, String description, int itemLevel, ItemTypeEnum itemType,
-                                          Map<String, ItemStatisticsObject> baseStatistics,
-                                          Map<String, ItemStatisticsObject> baseAdditionalStatistics
-    ){
-        ItemsSubtypes subtype = RandomUtils.getRandomItemFromArray(itemType.getSubtypes());
-        return generateItem(user, name, description, itemType, subtype, itemLevel,
-                getRandomRarityItem(),getRandomItemPrefix(),
-                getRandomItemSuffix(), baseStatistics, baseAdditionalStatistics
-        );
-    };
-
-
-    public static Item generateRandomItem(User user){
+    public static Item generateRandomItem(User user, LootConfig.RaritiesBonuses raritiesBonuses){
         ItemTypeEnum randomItemType = getRandomItemType();
-        return generateRandomItemWithoutBaseStats(user, RandomUtils.getRandomValueWithinRange(1,100), randomItemType, Optional.empty());
+        return generateRandomItemWithoutBaseStats(user, RandomUtils.getRandomValueWithinRange(1,100), randomItemType, raritiesBonuses, Optional.empty());
     }
-    public static List<Item> generateRandomItems(User user, int count) {
+    public static List<Item> generateRandomItems(User user, int count, LootConfig.RaritiesBonuses raritiesBonuses) {
         List<Item> generatedItems = new ArrayList<>();
 
         for (int i = 0; i<= count; i ++){
-            generatedItems.add(generateRandomItem(user));
+            generatedItems.add(generateRandomItem(user, raritiesBonuses));
         }
     return generatedItems;
     }
