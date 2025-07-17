@@ -14,7 +14,7 @@ import com.textbasedgame.settings.LootService;
 import com.textbasedgame.settings.XpService;
 import com.textbasedgame.statistics.AdditionalStatisticsNamesEnum;
 import com.textbasedgame.users.User;
-import com.textbasedgame.utils.CurrenciesUtils;
+import com.textbasedgame.utils.GoldService;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +29,7 @@ public class Fight {
 
     public final XpService xpService;
     public final LootService lootService;
+    public final GoldService goldService;
 
     private final int maxTurns;
     private final int baseInitiativePerCycle = 20;
@@ -46,6 +47,7 @@ public class Fight {
 
     Fight(XpService xpService,
           LootService lootService,
+          GoldService goldService,
           User user, List<Character> characters, List<Enemy> enemies, int maxTurns, int mainHeroLevel, boolean mustKillEnemyToWin) {
 
         this.calculateMinimumInitiativeOfLevelsMean(
@@ -56,6 +58,7 @@ public class Fight {
         );
         this.xpService = xpService;
         this.lootService = lootService;
+        this.goldService = goldService;
         this.user = user;
         this.userHeroesDetails = this.prepareUserHeroesDetails(characters);
         this.enemyHeroesDetails = this.prepareEnemiesHeroesDetails(enemies);
@@ -69,8 +72,8 @@ public class Fight {
             ).toList());
     }
 
-    Fight(XpService xpService, LootService lootService, User user, List<Character> characters, List<Enemy> enemies, int mainHeroLevel, boolean mustKillEnemyToWin){
-        this(xpService, lootService, user, characters, enemies, 50, mainHeroLevel, mustKillEnemyToWin);
+    Fight(XpService xpService, LootService lootService, GoldService goldService, User user, List<Character> characters, List<Enemy> enemies, int mainHeroLevel, boolean mustKillEnemyToWin){
+        this(xpService, lootService, goldService, user, characters, enemies, 50, mainHeroLevel, mustKillEnemyToWin);
     }
 
     private void calculateMinimumInitiativeOfLevelsMean(int[] levels) {
@@ -152,7 +155,7 @@ public class Fight {
                         this.xpService.awardXpFromEnemy(new XpUtils.EncounterContext(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), true))
                 );
                 this.fightReport.increaseGainedGold(
-                        CurrenciesUtils.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), true)
+                        this.goldService.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), true)
                 );
                 List<Item> loot = EnemyUtils.checkLootFromEnemy(
                             new EnemyUtils.CheckLootFromEnemyBaseContext(this.user, enemy.getType(), enemy.getLevel(), true),
@@ -273,7 +276,7 @@ public class Fight {
                     this.xpService.awardXpFromEnemy(new XpUtils.EncounterContext(this.mainHeroLevel, enemy.getLevel(), enemy.getType(), false))
                     );
             this.fightReport.increaseGainedGold(
-                    CurrenciesUtils.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), false)
+                    this.goldService.calculateGoldFromEnemy(enemy.getLevel(), enemy.getType(), false)
             );
 
             List<Item> loot = EnemyUtils.checkLootFromEnemy(
