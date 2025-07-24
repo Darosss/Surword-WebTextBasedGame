@@ -8,6 +8,13 @@ public class MerchantConfig {
     private final double buyCostValueMultiplier;
     private final double sellCostValueMultiplier;
 
+    public MerchantConfig() {
+        MerchantConfig df = MerchantConfig.defaults();
+        this.commodityRefreshMS = df.commodityRefreshMS;
+        this.buyCostValueMultiplier = df.buyCostValueMultiplier;
+        this.sellCostValueMultiplier = df.sellCostValueMultiplier;
+    }
+
     public MerchantConfig(long commodityRefreshMS, double buyCostValueMultiplier, double sellCostValueMultiplier) {
         this.commodityRefreshMS = commodityRefreshMS;
         this.buyCostValueMultiplier = buyCostValueMultiplier;
