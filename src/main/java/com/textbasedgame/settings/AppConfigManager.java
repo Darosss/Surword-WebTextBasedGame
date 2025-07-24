@@ -54,12 +54,27 @@ public class AppConfigManager {
     public void updateConfig(AppConfig newConfig) {
         lock.writeLock().lock();
         try {
-            datastore.save(newConfig);
-            currentConfig = newConfig.copy();
+            AppConfig dbConfigs = datastore.find(AppConfig.class).first();
+            if (dbConfigs != null) {
+                dbConfigs.setSystemConfig(newConfig.getSystemConfig());
+                dbConfigs.setGoldConfig(newConfig.getGoldConfig());
+                dbConfigs.setLootConfig(newConfig.getLootConfig());
+                dbConfigs.setMerchantConfig(newConfig.getMerchantConfig());
+                dbConfigs.setSkirmishConfig(newConfig.getSkirmishConfig());
+                dbConfigs.setXpConfig(newConfig.getXpConfig());
+
+                datastore.save(dbConfigs);
+                currentConfig = dbConfigs.copy();
+
+            } else {
+                AppConfig dbConfig = datastore.save(newConfig);
+                currentConfig = dbConfig.copy();
+            }
         } finally {
             lock.writeLock().unlock();
         }
     }
+    //TODO: make usage of update[...opts?] idk
 
     public SkirmishConfig getSkirmishOpts() {
         return getConfig().getSkirmishConfig();
