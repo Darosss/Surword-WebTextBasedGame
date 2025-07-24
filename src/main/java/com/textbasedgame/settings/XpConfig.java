@@ -15,6 +15,18 @@ public class XpConfig {
 
     private final double enemyDefeatSurvivedAdjustXp;
 
+    public XpConfig() {
+        XpConfig df = XpConfig.defaults();
+        this.basePerLevelXp = df.basePerLevelXp;
+        this.scalingFactorXp = df.scalingFactorXp;
+        this.factorBaseXp = df.factorBaseXp;
+        this.factorExponentXp = df.factorExponentXp;
+        this.enemyDefeatBaseXp = df.enemyDefeatBaseXp;
+        this.enemyDefeatFactorBaseXp = df.enemyDefeatFactorBaseXp;
+        this.enemyDefeatFactorExponentXp = df.enemyDefeatFactorExponentXp;
+        this.enemyDefeatSurvivedAdjustXp = df.enemyDefeatSurvivedAdjustXp;
+    }
+
     public XpConfig(long basePerLevelXp,
                     double scalingFactorXp,
                     double factorBaseXp,
