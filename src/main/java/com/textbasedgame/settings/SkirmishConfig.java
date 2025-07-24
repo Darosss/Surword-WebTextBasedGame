@@ -7,6 +7,12 @@ public class SkirmishConfig {
     private final long challengeCooldownMS;
     private final long dungeonCooldownMS;
 
+    public SkirmishConfig() {
+        SkirmishConfig df = SkirmishConfig.defaults();
+        this.challengeCooldownMS = df.getChallengeCooldownMS();;
+        this.dungeonCooldownMS = df.getDungeonCooldownMS();;
+    }
+
     public SkirmishConfig(long challengeCooldownMS, long dungeonCooldownMS) {
         this.challengeCooldownMS = challengeCooldownMS;
         this.dungeonCooldownMS = dungeonCooldownMS;
