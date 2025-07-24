@@ -3,7 +3,7 @@ package com.textbasedgame.settings;
 import com.textbasedgame.items.ItemRarityEnum;
 import dev.morphia.annotations.ExternalEntity;
 
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 @ExternalEntity(target = LootConfig.class)
@@ -19,7 +19,7 @@ public class LootConfig {
         }
 
         public static RaritiesBonuses defaults() {
-            EnumMap<ItemRarityEnum, Double> probs = new EnumMap<>(ItemRarityEnum.class);
+            Map<ItemRarityEnum, Double> probs = new HashMap<>();
             probs.put(ItemRarityEnum.COMMON, 1.0);
             probs.put(ItemRarityEnum.UNCOMMON, 1.0);
             probs.put(ItemRarityEnum.RARE, 1.0);
