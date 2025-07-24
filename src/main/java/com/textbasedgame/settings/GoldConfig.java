@@ -7,6 +7,11 @@ public class GoldConfig {
     private final long baseGoldPerEnemyLevel;
     private final double enemyDefeatSurvivedAdjustGold;
 
+    public GoldConfig() {
+        GoldConfig df = GoldConfig.defaults();
+        this.baseGoldPerEnemyLevel = df.baseGoldPerEnemyLevel;
+        this.enemyDefeatSurvivedAdjustGold = df.enemyDefeatSurvivedAdjustGold;
+    }
 
     public GoldConfig(long baseGoldPerEnemyLevel, double enemyDefeatSurvivedAdjustGold) {
         this.baseGoldPerEnemyLevel = baseGoldPerEnemyLevel;
