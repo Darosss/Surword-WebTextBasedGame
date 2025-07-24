@@ -9,6 +9,12 @@ public class SystemConfig{
         private final long leaderboardRefreshCooldownMs;
         private final List<MercenaryLimit> mercenaryCharacterLimits;
 
+    public SystemConfig() {
+        SystemConfig df = SystemConfig.defaults();
+        this.leaderboardRefreshCooldownMs = df.leaderboardRefreshCooldownMs;
+        this.mercenaryCharacterLimits = df.mercenaryCharacterLimits;
+    }
+
     public SystemConfig(long leaderboardRefreshCooldownMs, List<MercenaryLimit> mercenaryCharacterLimits) {
         this.leaderboardRefreshCooldownMs = leaderboardRefreshCooldownMs;
         this.mercenaryCharacterLimits = mercenaryCharacterLimits;
@@ -33,6 +39,14 @@ public class SystemConfig{
                         new MercenaryLimit(50, 4)
                 )
         );
+    }
+
+    @Override
+    public String toString() {
+        return "SystemConfig{" +
+                "leaderboardRefreshCooldownMs=" + leaderboardRefreshCooldownMs +
+                ", mercenaryCharacterLimits=" + mercenaryCharacterLimits +
+                '}';
     }
 }
 
