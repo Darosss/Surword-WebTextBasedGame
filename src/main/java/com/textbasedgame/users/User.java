@@ -168,6 +168,9 @@ public class User {
     public List<String> getRoles() {
         return this.roles;
     }
+    public List<String> getRolesForToken() {
+        return this.roles.stream().map((role)->"ROLE_"+role).toList();
+    }
 
     public void setRoles(List<String> roles) {
         this.roles = roles;
