@@ -8,7 +8,16 @@ import java.util.Map;
 
 @ExternalEntity(target = LootConfig.class)
 public class LootConfig {
+
     public record RaritiesBonuses(double baseFactor, Map<ItemRarityEnum, Double> rarityBonuses) {
+        @Override
+        public String toString() {
+            return "RaritiesBonuses{" +
+                    "baseFactor=" + baseFactor +
+                    ", rarityBonuses=" + rarityBonuses +
+                    '}';
+        }
+
         public static RaritiesBonuses defaults() {
             EnumMap<ItemRarityEnum, Double> probs = new EnumMap<>(ItemRarityEnum.class);
             probs.put(ItemRarityEnum.COMMON, 1.0);
