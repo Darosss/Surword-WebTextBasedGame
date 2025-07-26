@@ -1,7 +1,7 @@
 package com.textbasedgame.characters;
 
 import com.textbasedgame.auth.AuthenticationFacade;
-import com.textbasedgame.auth.LoggedUserUtils;
+import com.textbasedgame.auth.LoggedUserService;
 import com.textbasedgame.auth.SecuredRestController;
 import com.textbasedgame.characters.equipment.CharacterEquipmentFieldsEnum;
 import com.textbasedgame.characters.equipment.Equipment.UseConsumableItemResult;
@@ -10,7 +10,8 @@ import com.textbasedgame.characters.equipment.Equipment.UnEquipItemResult;
 import com.textbasedgame.common.ResourceNotFoundException;
 import com.textbasedgame.items.*;
 import com.textbasedgame.response.CustomResponse;
-import com.textbasedgame.settings.Settings;
+import com.textbasedgame.settings.AppConfigManager;
+import com.textbasedgame.settings.SystemConfig;
 import com.textbasedgame.statistics.BaseStatisticsNamesEnum;
 import com.textbasedgame.statistics.StatisticsUtils;
 import com.textbasedgame.users.User;
@@ -33,7 +34,8 @@ public class CharactersController implements SecuredRestController {
     private final AuthenticationFacade authenticationFacade;
     private final UserService userService;
     private final InventoryService inventoryService;
-
+    private final LoggedUserService loggedUserService;
+    private final AppConfigManager appConfigManager;
     private final CharacterInventoryService characterInventoryService;
 
     @Autowired
@@ -41,13 +43,17 @@ public class CharactersController implements SecuredRestController {
                                 UserService userService,
                                 AuthenticationFacade authenticationFacade,
                                 CharacterInventoryService characterInventoryService,
-                                InventoryService inventoryService) {
+                                InventoryService inventoryService,
+                                LoggedUserService loggedUserService,
+                                AppConfigManager appConfigManager) {
         this.service = characterService;
         this.itemService = itemService;
         this.userService = userService;
         this.authenticationFacade = authenticationFacade;
         this.inventoryService = inventoryService;
         this.characterInventoryService = characterInventoryService;
+        this.loggedUserService = loggedUserService;
+        this.appConfigManager = appConfigManager;
     }
 
     @GetMapping("/your-mercenaries")
@@ -65,7 +71,7 @@ public class CharactersController implements SecuredRestController {
     }
     @GetMapping("/your-characters-ids")
     public CustomResponse<List<String>> getCharactersIds() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         List<String> charactersIds =loggedUser.getCharacters().stream().map((character->character.getId().toString())).toList();
         return new CustomResponse<>(HttpStatus.OK, charactersIds);
@@ -94,7 +100,7 @@ public class CharactersController implements SecuredRestController {
 
     @PostMapping("/create")
     public CustomResponse<Optional<MainCharacter>> createMainCharacter() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         if(this.service.findMainCharacterByUserId(loggedUser.getId().toString()).isPresent()){
             throw new BadRequestException("User already have main character");
@@ -109,7 +115,7 @@ public class CharactersController implements SecuredRestController {
 
     @PostMapping("/create-mercenary")
     public CustomResponse<Optional<MercenaryCharacter>> createMercenaryCharacter() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
 
         Optional<MainCharacter> mainCharacter = this.service.findMainCharacterByUserId(loggedUser.getId().toString());
 
@@ -118,13 +124,13 @@ public class CharactersController implements SecuredRestController {
         boolean canCreateMercenary = false;
         String errorMessage = "You have exceed a limit";
         int charactersCount = loggedUser.getCharacters().size();
-        for (Settings.MercenaryCharactersLimits charsLimit : Settings.MercenaryCharactersLimits.values()) {
-            if(charactersCount >= charsLimit.getCharactersLimit()) continue;
-            if(mainCharacter.get().getLevel() >= charsLimit.getRequiredLevel()) {
+        for (SystemConfig.MercenaryLimit charsLimit : this.appConfigManager.getSystemConfig().getMercenaryCharacterLimits()) {
+            if(charactersCount >= charsLimit.charactersLimit()) continue;
+            if(mainCharacter.get().getLevel() >= charsLimit.requiredLevel()) {
                 canCreateMercenary = true;
                 break;
             }else {
-                errorMessage ="You have too low level to create mercenary, need at least: "+charsLimit.getRequiredLevel();
+                errorMessage ="You have too low level to create mercenary, need at least: "+charsLimit.requiredLevel();
                 break;
             }
         }

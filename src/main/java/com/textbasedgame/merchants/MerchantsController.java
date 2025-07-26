@@ -2,11 +2,10 @@ package com.textbasedgame.merchants;
 
 
 import com.textbasedgame.auth.AuthenticationFacade;
-import com.textbasedgame.auth.LoggedUserUtils;
+import com.textbasedgame.auth.LoggedUserService;
 import com.textbasedgame.auth.SecuredRestController;
 import com.textbasedgame.characters.CharacterService;
 import com.textbasedgame.characters.MainCharacter;
-import com.textbasedgame.items.Item;
 import com.textbasedgame.response.CustomResponse;
 import com.textbasedgame.users.User;
 import com.textbasedgame.users.UserService;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Optional;
 
 //TODO: add refreshing commodity after time
@@ -26,18 +24,22 @@ public class MerchantsController implements SecuredRestController {
     private final MerchantsService service;
     private final CharacterService characterService;
     private final UserService userService;
+    private final LoggedUserService loggedUserService;
 
     @Autowired
-    public MerchantsController(AuthenticationFacade authenticationFacade, MerchantsService service, CharacterService characterService, UserService userService) {
+    public MerchantsController(AuthenticationFacade authenticationFacade, MerchantsService service,
+                               CharacterService characterService, UserService userService,
+                               LoggedUserService loggedUserService) {
         this.authenticationFacade = authenticationFacade;
         this.service = service;
         this.characterService = characterService;
         this.userService = userService;
+        this.loggedUserService = loggedUserService;
     }
 
     @GetMapping("/your-merchant")
     public CustomResponse<Merchant> getMerchant() throws Exception {
-        User loggedUser = LoggedUserUtils.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
         Optional<MainCharacter> mainCharacter = this.characterService.findMainCharacterByUserId(loggedUser.getId());
 
         if(mainCharacter.isEmpty()) throw new BadRequestException("You need to create main character, before visit merchant");

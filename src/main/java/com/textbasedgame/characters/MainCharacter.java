@@ -6,14 +6,10 @@ import com.textbasedgame.statistics.BaseStatisticsNamesEnum;
 import com.textbasedgame.users.User;
 import dev.morphia.query.updates.UpdateOperator;
 import dev.morphia.query.updates.UpdateOperators;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 public class MainCharacter extends Character {
-    private static final Logger logger = LoggerFactory.getLogger(MainCharacter.class);
-    public record LevelUpLogicReturn(int gainedLevels) {}
     private Long experience;
 
     public MainCharacter() {
@@ -34,36 +30,17 @@ public class MainCharacter extends Character {
         return UpdateOperators.set("experience", value);
     }
 
-    public LevelUpLogicReturn gainExperience(long experiencePoints) {
-        if (experiencePoints > 0) {
-            this.experience += experiencePoints;
-            return this.checkLevelUp();
-        }
-        return new LevelUpLogicReturn(0);
-    }
-    public long getExpToLevelUp () {
-        return ExperienceUtils.calculateExpToNextLevel(this.getLevel());
+    public void increaseExperience(long value) {
+        this.experience += value;
     }
 
-    private LevelUpLogicReturn checkLevelUp() {
-        long expToLevelUp = this.getExpToLevelUp();
-        int gainedLevels = 0;
-        while (this.experience >= expToLevelUp) {
-            this.experience -= expToLevelUp;
-            boolean levelUp = this.levelUp();
-            expToLevelUp = ExperienceUtils.calculateExpToNextLevel(this.getLevel());
-            if(levelUp) gainedLevels++;
-        }
-        return new LevelUpLogicReturn(gainedLevels);
+    public void decreaseExperience(long value) {
+        this.experience -= value;
     }
-    private boolean levelUp() {
-        this.setLevel(this.getLevel() + 1);
-        this.updateHealthBasedOnMaxHealth();
-        logger.debug("Level up! New level: {}", this.getLevel());
-        return true;
-    }
+
 
     public Long getExperience() {
         return experience;
     }
+
 }

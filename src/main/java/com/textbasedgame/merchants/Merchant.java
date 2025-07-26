@@ -1,7 +1,7 @@
 package com.textbasedgame.merchants;
 
 import com.textbasedgame.items.Item;
-import com.textbasedgame.settings.Settings;
+import com.textbasedgame.settings.MerchantConfig;
 import com.textbasedgame.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -37,9 +37,9 @@ public class Merchant {
     Merchant() {}
 
     public record MerchantTransaction(Optional<Item> item, long cost){}
-    public Merchant(User user, List<Item> itemsList) {
+    public Merchant(User user, List<Item> itemsList, MerchantConfig configs) {
         this.user = user;
-        this.setNewCommodity(itemsList);
+        this.setNewCommodity(itemsList, configs);
     }
 
     public void syncItemsToList() {
@@ -100,15 +100,15 @@ public class Merchant {
         return this.commodityRefreshAt.isBefore(LocalDateTime.now());
     }
 
-   public void setNewCommodity(List<Item> newItems) {
+   public void setNewCommodity(List<Item> newItems, MerchantConfig configs) {
        this.itemMap.clear();
        for(Item item: newItems) {
            String itemIdString = item.getId().toString();
-           long currentItemCost = (long) item.getValue() * Settings.MERCHANT_VALUE_BUY_COST_COMMODITY_MULTIPLIER;
+           long currentItemCost = (long) (item.getValue() * configs.getBuyCostValueMultiplier());
            this.itemMap.put(itemIdString, new ItemMerchant(item, currentItemCost));
        }
        this.syncItemsToList();
-       this.commodityRefreshAt = LocalDateTime.now().plusHours(Settings.MERCHANT_COMMODITY_REFRESH_HOURS);
+       this.commodityRefreshAt = LocalDateTime.now().plusSeconds(configs.getCommodityRefreshMS() / 60);
    }
 
 }

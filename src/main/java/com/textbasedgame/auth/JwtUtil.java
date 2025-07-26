@@ -36,8 +36,8 @@ public class JwtUtil {
 
         ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
         String userDataAsString = ow.writeValueAsString(user.getDetailsForToken(expirationTime));
-
         String token = Jwts.builder().subject(userDataAsString)
+                .claim("roles", user.getRolesForToken())
                 .expiration(expirationTime)
                 .signWith(key).compact();
 
@@ -86,11 +86,7 @@ public class JwtUtil {
         }
     }
 
-    public String getEmail(Claims claims) {
-        return claims.getSubject();
-    }
-
-    private List<String> getRoles(Claims claims) {
+    public List<String> getRoles(Claims claims) {
         return (List<String>) claims.get("roles");
     }
 
