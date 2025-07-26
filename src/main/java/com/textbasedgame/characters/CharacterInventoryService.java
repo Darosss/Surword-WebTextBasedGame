@@ -193,12 +193,15 @@ public class CharacterInventoryService {
     }
     private EquipItemResult handleUseMercenaryItemTransaction(MorphiaSession session, ItemMercenary item, MercenaryCharacter character, Inventory inventory){
         Optional<Item> itemToEquip = inventory.removeItemById(item.getId());
+        character.setMercenary(item);
         if (itemToEquip.isEmpty()) return new EquipItemResult(false, "Item does not exist.");
-        session.find(Character.class)
+
+        session.find(MercenaryCharacter.class)
                 .filter(Filters.eq("_id", character.getId()))
                 .update(
                         new UpdateOptions(),
-                        Character.getMorphiaSetCharacterStats(character.getStats())
+                        Character.getMorphiaSetCharacterStats(character.getStats()),
+                        MercenaryCharacter.getMorphiaSetCharacterMercenary(item)
                 );
         session.find(Inventory.class)
                 .filter(Filters.eq("_id", inventory.getId()))
@@ -238,11 +241,12 @@ public class CharacterInventoryService {
         ItemMercenary mercenaryItem = character.getMercenary();
         inventory.addItem(mercenaryItem);
         character.setMercenary(null);
-        session.find(Character.class)
+        session.find(MercenaryCharacter.class)
                 .filter(Filters.eq("_id", character.getId()))
                 .update(
                         new UpdateOptions(),
-                        Character.getMorphiaSetCharacterStats(character.getStats())
+                        Character.getMorphiaSetCharacterStats(character.getStats()),
+                        MercenaryCharacter.getMorphiaSetCharacterMercenary(null)
                 );
         session.find(Inventory.class)
                 .filter(Filters.eq("_id", inventory.getId()))
