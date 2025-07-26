@@ -8,6 +8,8 @@ import com.textbasedgame.statistics.BaseStatisticsNamesEnum;
 import com.textbasedgame.statistics.StatisticsUtils;
 import com.textbasedgame.users.User;
 import dev.morphia.annotations.Reference;
+import dev.morphia.query.updates.UpdateOperator;
+import dev.morphia.query.updates.UpdateOperators;
 
 import javax.annotation.Nullable;
 
@@ -20,6 +22,11 @@ public class MercenaryCharacter extends Character{
     //TODO: find and improve boolean asNew -> this was done to prevent morphia to use this constructor and use 0-arguments instead
     public MercenaryCharacter(String name, User user, CharacterEquipment equipment, boolean asNew) {
         super(name, user, equipment);
+    }
+
+    public static UpdateOperator getMorphiaSetCharacterMercenary(@Nullable ItemMercenary character) {
+        if(character == null) return UpdateOperators.unset("mercenary");
+        else return UpdateOperators.set("mercenary", character);
     }
 
     public void setMercenary(@Nullable ItemMercenary mercenaryValue) {
