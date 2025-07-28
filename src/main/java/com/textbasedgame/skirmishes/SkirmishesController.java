@@ -92,8 +92,7 @@ public class SkirmishesController implements SecuredRestController {
         if(mainChar.getHealth() <= minHP)
             throw new BadRequestException(String.format("To start a skirmish you need at least %f HP", minHP));
 
-        //TODO: make it from configs plusMinutes - remember(Changed for debug)
-        LocalDateTime challengeFinishTimestamp = LocalDateTime.now().plusSeconds(this.appConfigManager.getSkirmishOpts().getChallengeCooldownMS() / 60);
+        LocalDateTime challengeFinishTimestamp = LocalDateTime.now().plusSeconds(this.appConfigManager.getSkirmishOpts().getChallengeCooldownMS() / 1000);
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
         Skirmish.ChosenChallenge chosenChallenge = new Skirmish.ChosenChallenge(challengeId, challengeFinishTimestamp);
@@ -140,7 +139,7 @@ public class SkirmishesController implements SecuredRestController {
         ChallengesService.HandleDungeonReturn returnData =
         this.challengesService.handleDungeonFight(
                 foundSkirmish, loggedUser,
-                dungeonLevel,  this.appConfigManager.getSkirmishOpts().getDungeonCooldownMS() / 60
+                dungeonLevel,  this.appConfigManager.getSkirmishOpts().getDungeonCooldownMS() / 1000
         );
         if(returnData.data().isEmpty()) throw new BadRequestException(returnData.message());
 
