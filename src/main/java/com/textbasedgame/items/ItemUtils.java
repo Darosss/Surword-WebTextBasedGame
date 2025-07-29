@@ -1,7 +1,7 @@
 package com.textbasedgame.items;
 
 import com.textbasedgame.items.statistics.*;
-import com.textbasedgame.settings.LootConfig;
+import com.textbasedgame.settings.RaritiesBonuses;
 import com.textbasedgame.users.User;
 import com.textbasedgame.utils.RandomUtils;
 import org.springframework.data.util.Pair;
@@ -68,15 +68,15 @@ public class ItemUtils {
       };
     }
 
-    public static ItemRarityEnum getRandomRarityItem(LootConfig.RaritiesBonuses bonuses) {
+    public static ItemRarityEnum getRandomRarityItem(RaritiesBonuses bonuses) {
         double randomDouble = RandomUtils.getRandomValueWithinRange(0, 1.0);
         ItemRarityEnum[] values =ItemRarityEnum.values();
 
         for(int i = values.length - 1; i >= 0; i--){
             ItemRarityEnum currentRarity = values[i];
             double baseProbability = currentRarity.getProbability();
-            double rarityBonus     = bonuses.rarityBonuses().getOrDefault(currentRarity, 1.0);
-            double adjustedModifier = Math.max(0.1, bonuses.baseFactor() * rarityBonus);
+            double rarityBonus     = bonuses.getRarityBonuses().getOrDefault(currentRarity, 1.0);
+            double adjustedModifier = Math.max(0.1, bonuses.getBaseFactor() * rarityBonus);
             double probabilityWithBonus = Math.min(1.0, baseProbability * adjustedModifier);
             if(randomDouble <= probabilityWithBonus) return currentRarity;
         }
@@ -131,7 +131,7 @@ public class ItemUtils {
     }
 
     public static Item generateRandomItemWithoutBaseStats(User user, int itemLevel, ItemTypeEnum itemType,
-                                                          LootConfig.RaritiesBonuses raritiesBonuses, Optional<String> overrideName){
+                                                          RaritiesBonuses raritiesBonuses, Optional<String> overrideName){
         ItemsSubtypes subtype = RandomUtils.getRandomItemFromArray(itemType.getSubtypes());
         ItemRarityEnum rarity = getRandomRarityItem(raritiesBonuses);
         ItemPrefixesEnum randomPrefix = getRandomItemPrefix();
@@ -144,11 +144,11 @@ public class ItemUtils {
 
 
 
-    public static Item generateRandomItem(User user, LootConfig.RaritiesBonuses raritiesBonuses){
+    public static Item generateRandomItem(User user, RaritiesBonuses raritiesBonuses){
         ItemTypeEnum randomItemType = getRandomItemType();
         return generateRandomItemWithoutBaseStats(user, RandomUtils.getRandomValueWithinRange(1,100), randomItemType, raritiesBonuses, Optional.empty());
     }
-    public static List<Item> generateRandomItems(User user, int count, LootConfig.RaritiesBonuses raritiesBonuses) {
+    public static List<Item> generateRandomItems(User user, int count, RaritiesBonuses raritiesBonuses) {
         List<Item> generatedItems = new ArrayList<>();
 
         for (int i = 0; i<= count; i ++){

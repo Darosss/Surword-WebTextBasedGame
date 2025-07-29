@@ -5,8 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class LootService {
@@ -26,35 +26,34 @@ public class LootService {
         );
     }
 
-    public LootConfig.RaritiesBonuses getCurrentRaritiesBonuses() {
-        LootConfig.RaritiesBonuses lootCfg = cfg.getLootConfig().getRaritiesBonusMultipliers();
+    public RaritiesBonuses getCurrentRaritiesBonuses() {
+        RaritiesBonuses lootCfg = cfg.getLootConfig().getRaritiesBonusMultipliers();
         Double baseMultiplier = events.multiplier(ModifierType.BETTER_RARITY);
-        Map<ItemRarityEnum, Double> currentRaritiesBonuses = lootCfg.rarityBonuses();
-        double baseValue = lootCfg.baseFactor() * baseMultiplier;
+        Map<ItemRarityEnum, Double> currentRaritiesBonuses = lootCfg.getRarityBonuses();
+        double baseValue = lootCfg.getBaseFactor() * baseMultiplier;
 
-        Map<ItemRarityEnum, Double> newMap = currentRaritiesBonuses.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry ->{
-                            switch(entry.getKey()) {
-                                case MYTHIC -> {
-                                    return entry.getValue() * events.multiplier(ModifierType.BETTER_RARITY_MYTHIC);
-                                }
-                                case LEGENDARY -> {
-                                    return entry.getValue() * events.multiplier(ModifierType.BETTER_RARITY_LEGENDARY);
-                                }
-                                case EPIC -> {
-                                    return entry.getValue() * events.multiplier(ModifierType.BETTER_RARITY_EPIC);
-                                }
-                                case UNCOMMON -> {
-                                    return entry.getValue() * events.multiplier(ModifierType.BETTER_RARITY_UNCOMMON);
-                                }
-                            }
-                            return entry.getValue();
-                        }
-                ));
+        Map<ItemRarityEnum, Double> newMap = new HashMap<>();
+        //TODO:::!:!:!:
+        for (ItemRarityEnum key: currentRaritiesBonuses.keySet()) {
+            double currentValue = currentRaritiesBonuses.get(key);
+            switch(key) {
+                case MYTHIC -> {
+                    currentValue = currentValue * events.multiplier(ModifierType.BETTER_RARITY_MYTHIC);
+                }
+                case LEGENDARY -> {
+                    currentValue = currentValue * events.multiplier(ModifierType.BETTER_RARITY_LEGENDARY);
+                }
+                case EPIC -> {
+                    currentValue = currentValue * events.multiplier(ModifierType.BETTER_RARITY_EPIC);
+                }
+                case UNCOMMON -> {
+                    currentValue = currentValue * events.multiplier(ModifierType.BETTER_RARITY_UNCOMMON);
+                }
+            }
+            newMap.put(key, currentValue);
+        }
 
         logger.debug("getCurrentRaritiesBonuses -> Current data: BaseMultiplier: {}, Map: {}", baseMultiplier, newMap.entrySet().toString());
-        return new LootConfig.RaritiesBonuses(baseValue, newMap);
+        return new RaritiesBonuses(baseValue, newMap);
     }
 }
