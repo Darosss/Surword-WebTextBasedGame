@@ -2,6 +2,7 @@ package com.textbasedgame.users.inventory;
 import com.textbasedgame.items.Item;
 import dev.morphia.Datastore;
 import dev.morphia.UpdateOptions;
+import dev.morphia.query.FindOptions;
 import dev.morphia.query.filters.Filters;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,9 @@ public class InventoryService {
     }
 
     public Inventory getUserInventory(ObjectId userId) {
-        return this.datastore.find(Inventory.class).filter(Filters.eq("user", userId)).first();
+        return this.datastore.find(Inventory.class)
+                .filter(Filters.eq("user", userId))
+                .iterator(new FindOptions().projection().exclude("user")).tryNext();
     }
     public Inventory getUserInventory(String userId) {
         return this.getUserInventory(new ObjectId(userId));
