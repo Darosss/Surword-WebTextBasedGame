@@ -1,6 +1,5 @@
 package com.textbasedgame.items;
 
-import com.textbasedgame.auth.AuthenticationFacade;
 import com.textbasedgame.auth.LoggedUserService;
 import com.textbasedgame.auth.SecuredRestController;
 import com.textbasedgame.response.CustomResponse;
@@ -23,18 +22,16 @@ public class ItemDebugDataGeneratorController implements SecuredRestController {
     private final ItemService service;
     private final UserService userService;
     private final InventoryService inventoryService;
-    private final AuthenticationFacade authenticationFacade;
     private final LoggedUserService loggedUserService;
     private final LootService lootService;
 
     @Autowired
     public ItemDebugDataGeneratorController(ItemService service, UserService userService,
-                                            InventoryService inventoryService, AuthenticationFacade authenticationFacade,
+                                            InventoryService inventoryService,
                                             LoggedUserService loggedUserService, LootService lootService) {
         this.service = service;
         this.userService = userService;
         this.inventoryService = inventoryService;
-        this.authenticationFacade = authenticationFacade;
         this.loggedUserService = loggedUserService;
         this.lootService = lootService;
     }
@@ -46,7 +43,7 @@ public class ItemDebugDataGeneratorController implements SecuredRestController {
 
     @PostMapping("items/debug/create-with-random-data/{countOfItems}/")
     public CustomResponse<List<Item>> generateItemWithRandomData(@PathVariable int countOfItems) throws Exception {
-        User loggedUser = loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = loggedUserService.getLoggedUserDetails();
         Inventory inventory = this.inventoryService.getUserInventory(loggedUser.getId());
         List<Item> items = this.service.create(ItemUtils.generateRandomItems(loggedUser, countOfItems, lootService.getCurrentRaritiesBonuses()));
         for (Item item : items) {
@@ -62,7 +59,7 @@ public class ItemDebugDataGeneratorController implements SecuredRestController {
             @PathVariable int level,
             @PathVariable ItemTypeEnum type
     ) throws Exception {
-        User loggedUser = loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = loggedUserService.getLoggedUserDetails();
         Inventory inventory = this.inventoryService.getUserInventory(loggedUser.getId());
         Item item = service.create(ItemUtils.generateRandomItemWithoutBaseStats(
                 loggedUser, level, type, this.lootService.getCurrentRaritiesBonuses(), Optional.empty()));

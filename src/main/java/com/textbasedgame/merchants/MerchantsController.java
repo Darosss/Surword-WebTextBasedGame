@@ -23,23 +23,21 @@ public class MerchantsController implements SecuredRestController {
     private final AuthenticationFacade authenticationFacade;
     private final MerchantsService service;
     private final CharacterService characterService;
-    private final UserService userService;
     private final LoggedUserService loggedUserService;
 
     @Autowired
     public MerchantsController(AuthenticationFacade authenticationFacade, MerchantsService service,
-                               CharacterService characterService, UserService userService,
+                               CharacterService characterService,
                                LoggedUserService loggedUserService) {
         this.authenticationFacade = authenticationFacade;
         this.service = service;
         this.characterService = characterService;
-        this.userService = userService;
         this.loggedUserService = loggedUserService;
     }
 
     @GetMapping("/your-merchant")
     public CustomResponse<Merchant> getMerchant() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
         Optional<MainCharacter> mainCharacter = this.characterService.findMainCharacterByUserId(loggedUser.getId());
 
         if(mainCharacter.isEmpty()) throw new BadRequestException("You need to create main character, before visit merchant");

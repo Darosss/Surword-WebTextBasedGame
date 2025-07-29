@@ -38,7 +38,7 @@ public class UsersController implements SecuredRestController {
     @GetMapping("/profile")
     public CustomResponse<LoggedUserService.ProfileUserDetails> getProfile() throws Exception {
         return new CustomResponse<>(HttpStatus.OK,
-                this.loggedUserService.getProfileUserDetails(this.authenticationFacade, this.service));
+                this.loggedUserService.getProfileUserDetails());
     }
     @GetMapping("users/{id}")
     public CustomResponse<User> getUserById(@PathVariable String id){

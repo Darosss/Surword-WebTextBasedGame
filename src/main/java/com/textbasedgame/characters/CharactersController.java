@@ -71,7 +71,7 @@ public class CharactersController implements SecuredRestController {
     }
     @GetMapping("/your-characters-ids")
     public CustomResponse<List<String>> getCharactersIds() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         List<String> charactersIds =loggedUser.getCharacters().stream().map((character->character.getId().toString())).toList();
         return new CustomResponse<>(HttpStatus.OK, charactersIds);
@@ -100,7 +100,7 @@ public class CharactersController implements SecuredRestController {
 
     @PostMapping("/create")
     public CustomResponse<Optional<MainCharacter>> createMainCharacter() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         if(this.service.findMainCharacterByUserId(loggedUser.getId().toString()).isPresent()){
             throw new BadRequestException("User already have main character");
@@ -115,7 +115,7 @@ public class CharactersController implements SecuredRestController {
 
     @PostMapping("/create-mercenary")
     public CustomResponse<Optional<MercenaryCharacter>> createMercenaryCharacter() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         Optional<MainCharacter> mainCharacter = this.service.findMainCharacterByUserId(loggedUser.getId().toString());
 

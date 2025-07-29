@@ -28,7 +28,6 @@ import java.util.concurrent.CompletableFuture;
 @RestController("skirmishes")
 public class SkirmishesController implements SecuredRestController {
     //TODO: move somewhere - maybe into user or sth
-    private final AuthenticationFacade authenticationFacade;
     private final UserService userService;
     private final SkirmishesService service;
     private final ChallengesService challengesService;
@@ -38,13 +37,11 @@ public class SkirmishesController implements SecuredRestController {
 
 
     @Autowired
-    public SkirmishesController(AuthenticationFacade authenticationFacade,
-                                SkirmishesService skirmishesService,
+    public SkirmishesController(SkirmishesService skirmishesService,
                                 UserService userService, ChallengesService challengesService,
                                 ItemsInventoryService itemsInventoryService,
                                 LoggedUserService loggedUserService,
                                 AppConfigManager appConfigManager) {
-        this.authenticationFacade = authenticationFacade;
         this.userService = userService;
         this.service = skirmishesService;
         this.challengesService = challengesService;
@@ -55,14 +52,14 @@ public class SkirmishesController implements SecuredRestController {
 
     @GetMapping("/your-skirmishes")
     public CustomResponse<Skirmish> getYourSkirmishes() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
         return new CustomResponse<>(HttpStatus.OK, this.service.getOrCreateSkirmish(loggedUser, 2));
     }
 
 
     @GetMapping("/current-challenge")
     public CustomResponse<FightReport> getChallengeStatus() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
@@ -85,7 +82,7 @@ public class SkirmishesController implements SecuredRestController {
     public CustomResponse<Boolean> startSkirmishChallenge(
             @PathVariable String challengeId
     ) throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         MainCharacter mainChar =  loggedUser.getMainCharacter().get();
         double minHP = mainChar.getAdditionalStatEffective(AdditionalStatisticsNamesEnum.MAX_HEALTH) * 0.1;
@@ -110,7 +107,7 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/cancel-current-challenge")
     public CustomResponse<Boolean> cancelCurrentChallenge() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
@@ -124,7 +121,7 @@ public class SkirmishesController implements SecuredRestController {
     }
     @GetMapping("/dungeons")
     public CustomResponse<Dungeons> getDungeons() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
         Skirmish skirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
         return new CustomResponse<>(HttpStatus.OK, skirmish.getDungeons());
@@ -132,7 +129,7 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/dungeons/start-a-fight/{dungeonLevel}")
     public CustomResponse<FightReport> startDungeonFight(@PathVariable int dungeonLevel) throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         Skirmish foundSkirmish = this.service.getOrCreateSkirmish(loggedUser, 2);
 
@@ -170,13 +167,13 @@ public class SkirmishesController implements SecuredRestController {
 
     @PostMapping("/debug/generate-new-challenges")
     public CustomResponse<Skirmish> generateNewChallenges() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         return new CustomResponse<>(HttpStatus.OK, this.service.generateNewChallengesForUser(loggedUser, 2));
     }
     @GetMapping("/debug/delete-existing-create-debug-data")
     public CustomResponse<Skirmish> createDebug() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails(this.authenticationFacade, this.userService);
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
         Optional<Skirmish> foundSkirmish = this.service.findOneByUserId(loggedUser.getId());
         foundSkirmish.ifPresent(skirmish -> this.service.removeById(skirmish.getId()));
