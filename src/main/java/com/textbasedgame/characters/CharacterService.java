@@ -70,7 +70,10 @@ public class CharacterService {
         return datastore.find(MercenaryCharacter.class).filter(Filters.eq("user", userId)).iterator(new FindOptions().projection().include("id")).toList()
                 .stream().map((ch)->ch.getId().toString()).toList();
     }
-
+    public String findUserMainCharacterId(ObjectId userId) {
+        return datastore.find(MainCharacter.class).filter(Filters.eq("user", userId)).iterator(new FindOptions().projection().include("id")).
+                tryNext().getId().toString();
+    }
 
     public <T extends Character> CreateCharacterReturn<T> createCharacter(Class<T> characterClass, User user, String name) throws Exception {
         try(MorphiaSession session = datastore.startSession()) {
