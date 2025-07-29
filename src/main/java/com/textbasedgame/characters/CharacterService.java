@@ -66,6 +66,12 @@ public class CharacterService {
                 tryNext().getLevel();
     }
 
+    public List<String> findUserMercenariesIds(ObjectId userId) {
+        return datastore.find(MercenaryCharacter.class).filter(Filters.eq("user", userId)).iterator(new FindOptions().projection().include("id")).toList()
+                .stream().map((ch)->ch.getId().toString()).toList();
+    }
+
+
     public <T extends Character> CreateCharacterReturn<T> createCharacter(Class<T> characterClass, User user, String name) throws Exception {
         try(MorphiaSession session = datastore.startSession()) {
             session.startTransaction();
