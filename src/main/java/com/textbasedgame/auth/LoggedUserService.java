@@ -6,8 +6,10 @@ import com.textbasedgame.common.ResourceNotFoundException;
 import com.textbasedgame.settings.XpService;
 import com.textbasedgame.users.User;
 import com.textbasedgame.users.UserService;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -22,19 +24,30 @@ public class LoggedUserService {
         this.characterService = characterService;
         this.authenticationFacade = authenticationFacade;
     }
+    public record LoggedUserCharactersIds(String mainCharacter, List<String> mercenaries, int count){};
 
     public record MainCharacterDetails (int health, int maxHealth, int level, long experience, long neededExp){}
     public record ProfileUserDetails(User user, Optional<MainCharacterDetails> heroDetails){}
 
 
+    public LoggedUserCharactersIds getLoggedUserCharacters() throws Exception {
+        String userId = authenticationFacade.getJwtTokenPayload().id();
+
+        List<String> mercenaries = this.characterService.findUserMercenariesIds(new ObjectId(userId));
+        String mainCharacterId = this.characterService.findUserMainCharacterId(new ObjectId(userId));
+        int charactersCount = (mainCharacterId != null ? 1 : 0) + mercenaries.size();
+        return new LoggedUserCharactersIds(this.characterService.findUserMainCharacterId(new ObjectId(userId)), mercenaries, charactersCount);
+    }
+
     public User getLoggedUserDetails() throws Exception {
         String userId = authenticationFacade.getJwtTokenPayload().id();
-        Optional<User> foundUser = this.userService.findOneById(userId);
+        Optional<User> foundUser = this.userService.findOneByIdNoPopulateCharacter(userId);
         return foundUser.orElseThrow(() -> new ResourceNotFoundException("Not found user data. Please try again later"));
     }
 
     public ProfileUserDetails getProfileUserDetails() throws Exception {
         User user = getLoggedUserDetails();
+        user.setCharacters(null);
         return new ProfileUserDetails(user, getMainCharacterDetails());
     }
 
