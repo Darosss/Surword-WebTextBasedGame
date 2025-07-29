@@ -70,11 +70,8 @@ public class CharactersController implements SecuredRestController {
                 .orElseThrow(()->new BadRequestException("You do not have main character yet"));
     }
     @GetMapping("/your-characters-ids")
-    public CustomResponse<List<String>> getCharactersIds() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails();
-
-        List<String> charactersIds =loggedUser.getCharacters().stream().map((character->character.getId().toString())).toList();
-        return new CustomResponse<>(HttpStatus.OK, charactersIds);
+    public CustomResponse<LoggedUserService.LoggedUserCharactersIds> getCharactersIds() throws Exception {
+        return new CustomResponse<>(HttpStatus.OK, this.loggedUserService.getLoggedUserCharacters());
     }
 
     @GetMapping("/user/{userId}/characters-ids")
@@ -115,18 +112,20 @@ public class CharactersController implements SecuredRestController {
 
     @PostMapping("/create-mercenary")
     public CustomResponse<Optional<MercenaryCharacter>> createMercenaryCharacter() throws Exception {
-        User loggedUser = this.loggedUserService.getLoggedUserDetails();
 
-        Optional<MainCharacter> mainCharacter = this.service.findMainCharacterByUserId(loggedUser.getId().toString());
 
-        if(mainCharacter.isEmpty()) throw new Exception("Something went wrong. Not found main character");
+        LoggedUserService.LoggedUserCharactersIds charactersIds = this.loggedUserService.getLoggedUserCharacters();
+
+        if(charactersIds.mainCharacter()==null) throw new Exception("Something went wrong. Not found main character");
 
         boolean canCreateMercenary = false;
         String errorMessage = "You have exceed a limit";
-        int charactersCount = loggedUser.getCharacters().size();
+        int charactersCount = charactersIds.count();
         for (SystemConfig.MercenaryLimit charsLimit : this.appConfigManager.getSystemConfig().getMercenaryCharacterLimits()) {
             if(charactersCount >= charsLimit.charactersLimit()) continue;
-            if(mainCharacter.get().getLevel() >= charsLimit.requiredLevel()) {
+            String userId = this.authenticationFacade.getJwtTokenPayload().id();
+            int currentLevel = this.service.getMainCharacterLevelByUserId(new ObjectId(userId));
+            if(currentLevel >= charsLimit.requiredLevel()) {
                 canCreateMercenary = true;
                 break;
             }else {
@@ -137,7 +136,9 @@ public class CharactersController implements SecuredRestController {
 
         if(!canCreateMercenary) throw new BadRequestException(errorMessage);
 
-        CharacterService.CreateCharacterReturn<MercenaryCharacter> createdCharacterReturn = this.service.createCharacter(MercenaryCharacter.class, loggedUser, "Mercenary "+(charactersCount+1));
+        User loggedUser = this.loggedUserService.getLoggedUserDetails();
+        CharacterService.CreateCharacterReturn<MercenaryCharacter> createdCharacterReturn =
+                this.service.createCharacter(MercenaryCharacter.class, loggedUser, "Mercenary "+(charactersCount+1));
 
         if( !createdCharacterReturn.success()) throw new BadRequestException(createdCharacterReturn.message());
         return new CustomResponse<>(HttpStatus.CREATED, createdCharacterReturn.message(), createdCharacterReturn.character());
