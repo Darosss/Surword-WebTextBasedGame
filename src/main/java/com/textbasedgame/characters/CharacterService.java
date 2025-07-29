@@ -6,6 +6,7 @@ import com.textbasedgame.utils.TransactionsUtils;
 import dev.morphia.Datastore;
 import dev.morphia.DeleteOptions;
 import dev.morphia.UpdateOptions;
+import dev.morphia.query.FindOptions;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.query.updates.UpdateOperator;
 import dev.morphia.transactions.MorphiaSession;
@@ -58,6 +59,11 @@ public class CharacterService {
     }
     public List<MercenaryCharacter> findUserMercenaries(String userId) {
         return this.findUserMercenaries(new ObjectId(userId));
+    }
+
+    public Integer getMainCharacterLevelByUserId(ObjectId userId) {
+        return datastore.find(MainCharacter.class).filter(Filters.eq("user", userId)).iterator(new FindOptions().projection().include("id", "level")).
+                tryNext().getLevel();
     }
 
     public <T extends Character> CreateCharacterReturn<T> createCharacter(Class<T> characterClass, User user, String name) throws Exception {
