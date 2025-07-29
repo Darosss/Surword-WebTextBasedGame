@@ -37,6 +37,11 @@ public class UserService {
         return Optional.ofNullable(datastore.find(User.class)
                 .filter(Filters.eq("id", new ObjectId(id))).first());
     }
+    public Optional<User> findOneByIdNoPopulateCharacter(String id) {
+        return Optional.of(datastore.find(User.class)
+                .filter(Filters.eq("id", new ObjectId(id)))
+                .iterator(new FindOptions().projection().exclude("characters")).tryNext());
+    }
 
     //TODO: make update better later, for now w/e
     public User update(User user) {
