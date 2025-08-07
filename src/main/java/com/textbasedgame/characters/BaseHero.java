@@ -1,5 +1,6 @@
 package com.textbasedgame.characters;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.textbasedgame.statistics.*;
 import org.bson.types.ObjectId;
 
@@ -99,5 +100,11 @@ public class BaseHero {
     }
     protected void setId(ObjectId id){
         this.baseHeroId = id;
+    }
+
+    @JsonProperty("id")
+    public String getIdString() {
+        if(this.getId() == null) return "";
+        return this.getId().toHexString();
     }
 }
