@@ -86,7 +86,7 @@ public class AttackCalculations {
         AttackBase attackBase = getAttackBaseValues(hero);
         boolean doubledAttack = doubleAttackPossible && isDoubledAttack(hero);
         AttackDebuffs attackDebuffs = getAttackDebuffs();
-        return new AttackReturnData(hero.getName(), attackBase, doubledAttack, attackDebuffs);
+        return new AttackReturnData(hero.getId().toHexString(), attackBase, doubledAttack, attackDebuffs);
     }
 
 
