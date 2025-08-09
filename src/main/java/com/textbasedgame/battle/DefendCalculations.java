@@ -88,7 +88,7 @@ public class DefendCalculations {
             logger.debug("[DEFEND] {} RECEIVED: {} damage from attack made by: {}, left with [{}] hp", defender.getName(), effectiveDamage, attacker.getName(), defender.getHealth());
         }
 
-        return new DefendReturnData(defender.getName(), effectiveDamage, defender.getHealth(), defendType, parriedData);
+        return new DefendReturnData(defender.getId().toHexString(), effectiveDamage, defender.getHealth(), defendType, parriedData);
     }
 
 
