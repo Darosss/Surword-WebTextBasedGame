@@ -97,15 +97,13 @@ public class ItemUtils {
     public static Item generateItemWithoutBaseStats(
             User user, String itemName, String description, ItemTypeEnum type, ItemsSubtypes subtype, int level, ItemRarityEnum rarity, ItemPrefixesEnum prefix, ItemSuffixesEnum suffix
     ) {
-        return generateItem(user, itemName, description, type, subtype, level, rarity, prefix,suffix, new HashMap<>(), new HashMap<>());
+        return generateItem(user, itemName, description, type, subtype, level, rarity, prefix,suffix);
     }
 
     private static Item generateItem(
             User user,
             String itemName, String description, ItemTypeEnum type, ItemsSubtypes subtype, int level,  ItemRarityEnum rarity,
-            ItemPrefixesEnum prefix, ItemSuffixesEnum suffix,
-            Map<String, ItemStatisticsObject> baseStatistics,
-            Map<String, ItemStatisticsObject> baseAdditionalStatistics
+            ItemPrefixesEnum prefix, ItemSuffixesEnum suffix
     ){
 
         Pair<Float, Float> weightRange = subtype.getWeightRange();
@@ -118,10 +116,12 @@ public class ItemUtils {
                         rarity, itemWeight, subtype);
             }
             case MERCENARY -> {
+                CharacterRace race = RandomUtils.getRandomItemFromArray(CharacterRace.values());
                 return new ItemMercenary(itemName, user, description,
-                        level, getItemValueBasedOnRarityLevel(level, rarity), rarity, itemWeight, subtype,
-                        //TODO: add stats for mercenaries
-                        baseStatistics, baseAdditionalStatistics);
+                        level, getItemValueBasedOnRarityLevel(level, rarity),
+                        rarity, itemWeight, subtype,
+                        race
+                );
             }
         }
         return new ItemWearable(itemName, user, description,

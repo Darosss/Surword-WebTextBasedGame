@@ -11,6 +11,7 @@ import dev.morphia.annotations.Id;
 import dev.morphia.annotations.Reference;
 import org.bson.types.ObjectId;
 
+import javax.annotation.Nullable;
 import java.time.LocalDateTime;
 
 @Entity("items")
@@ -36,6 +37,9 @@ public class Item {
     private ItemRarityEnum rarity;
     private float weight;
     protected ItemStatistics statistics;
+
+    @Nullable
+    protected CharacterRace race;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -129,6 +133,10 @@ public class Item {
         return statistics;
     }
 
+    @Nullable
+    public CharacterRace getRace() {
+        return race;
+    }
 
     @Override
     public String toString() {
