@@ -69,6 +69,7 @@ public class Inventory {
     }
 
     public Map<String, Item> getItems() {
+        if(items == null) return new HashMap<>();
         return items.stream().collect(Collectors.toMap(
                 (item)->item.getId().toString(),
                 Function.identity(),
